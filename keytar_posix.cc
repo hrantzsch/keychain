@@ -39,11 +39,14 @@ namespace
    #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #endif
 
+const char* ServiceFieldName = "service";
+const char* AccountFieldName = "username";
+
 const SecretSchema kSchema = {
   "net.poedit.Credentials", SECRET_SCHEMA_NONE,
   {
-    { "service", SECRET_SCHEMA_ATTRIBUTE_STRING },
-    { "user", SECRET_SCHEMA_ATTRIBUTE_STRING },
+    { ServiceFieldName, SECRET_SCHEMA_ATTRIBUTE_STRING },
+    { AccountFieldName, SECRET_SCHEMA_ATTRIBUTE_STRING },
     { NULL, SecretSchemaAttributeType(0) },
   }
 };
@@ -64,8 +67,8 @@ bool AddPassword(const std::string& service, const std::string& user, const std:
       password.c_str(),
       NULL,  // not cancellable
       &error,
-      "service", service.c_str(),
-      "user", user.c_str(),
+      ServiceFieldName, service.c_str(),
+      AccountFieldName, user.c_str(),
       NULL);
   if (error != NULL) {
     fprintf(stderr, "%s\n", error->message);
@@ -82,8 +85,8 @@ bool GetPassword(const std::string& service, const std::string& user, std::strin
       &kSchema,
       NULL,  // not cancellable
       &error,
-      "service", service.c_str(),
-      "user", user.c_str(),
+      ServiceFieldName, service.c_str(),
+      AccountFieldName, user.c_str(),
       NULL);
 
   if (error != NULL) {
@@ -106,8 +109,8 @@ bool DeletePassword(const std::string& service, const std::string& user)
       &kSchema,
       NULL,  // not cancellable
       &error,
-      "service", service.c_str(),
-      "user", user.c_str(),
+      ServiceFieldName, service.c_str(),
+      AccountFieldName, user.c_str(),
       NULL);
   if (error != NULL) {
     fprintf(stderr, "%s\n", error->message);
