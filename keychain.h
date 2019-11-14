@@ -40,28 +40,18 @@ class Keychain {
 
     //! Return the error resulting from the most recent call to getPassword,
     //! addPassword, or deletePassword, if any
-    std::optional<std::string> lastError();
+    std::optional<std::string> lastError() const;
+
+    template <typename F>
+    bool updatePassword(F &&updateFun);
 
    private:
     //! \brief Create a platform specific service identifier
-    std::string makeServiceName(const std::string &service);
+    std::string makeServiceName(const std::string &service) const;
 
     void clearError();
 
-    template <typename F>
-    bool updatePassword(F &&updateFun) {
-        clearError();
-
-        Result result = updateFun();
-
-        // should either return a Success or an Error
-        assert(!std::holds_alternative<Keychain::Success>(result));
-
-        auto err = std::get_if<Keychain::Error>(&result);
-        if (err) _lastError = err->message;
-        return !err;
-    }
-
+   private:
     std::string _service;
     std::string _user;
     std::optional<std::string> _lastError;

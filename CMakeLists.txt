@@ -12,7 +12,7 @@ endif (MSVC)
 # see comment in test-main.cpp
 add_library("catchmain" OBJECT "test-main.cpp")
 
-set(SOURCES "tests.cpp")
+set(SOURCES "tests.cpp" "keychain.cpp")
 
 if (WIN32)
     list(APPEND SOURCES "keytar_win.cc")
