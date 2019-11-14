@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15.0)
+cmake_minimum_required(VERSION 3.12.4)
 
 project("keychain")
 set(BINARY_NAME "test-keychain")
