@@ -31,15 +31,14 @@ elseif (APPLE)
 else (WIN32)  # assuming Linux
     list(APPEND SOURCES "keytar_posix.cc")
 
-    set(GLIB_INCLUDE_DIRS "/usr/include/glib-2.0" "/usr/lib/glib-2.0/include")
-    set(SECRET_INCLUDE_DIR "/usr/include/libsecret-1")
-    include_directories(${SECRET_INCLUDE_DIR} ${GLIB_INCLUDE_DIRS})
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(KEYCHAIN REQUIRED glib-2.0 libsecret-1)
 
-    list(APPEND KEYCHAIN_LIBRARIES "/usr/lib/libsecret-1.so")
-    list(APPEND KEYCHAIN_LIBRARIES "/usr/lib/libglib-2.0.so")
 endif (WIN32)
 
 add_executable(${BINARY_NAME} $<TARGET_OBJECTS:catchmain> ${SOURCES})
+
+target_include_directories(${BINARY_NAME} PRIVATE ${KEYCHAIN_INCLUDE_DIRS})
 target_link_libraries(${BINARY_NAME} ${KEYCHAIN_LIBRARIES})
 
 add_custom_target(test ${BINARY_NAME})
