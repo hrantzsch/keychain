@@ -29,7 +29,7 @@ elseif (APPLE)
     list(APPEND KEYCHAIN_LIBRARIES ${SECURITY_LIBRARY})
 
 else (WIN32)  # assuming Linux
-    list(APPEND SOURCES "keytar_posix.cc")
+    list(APPEND SOURCES "keychain_posix.cpp")
 
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(KEYCHAIN REQUIRED glib-2.0 libsecret-1)
