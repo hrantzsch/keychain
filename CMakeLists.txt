@@ -20,7 +20,7 @@ if (WIN32)
     list(APPEND KEYCHAIN_LIBRARIES crypt32)
 
 elseif (APPLE)
-    list(APPEND SOURCES "keytar_mac.cc")
+    list(APPEND SOURCES "keychain_mac.cpp")
 
     find_library(COREFOUNDATION_LIBRARY CoreFoundation REQUIRED)
     list(APPEND KEYCHAIN_LIBRARIES ${COREFOUNDATION_LIBRARY})
