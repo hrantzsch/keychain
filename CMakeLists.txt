@@ -19,7 +19,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif ()
 
 if (WIN32)
-    list(APPEND SOURCES "keytar_win.cc")
+    list(APPEND SOURCES "keychain_win.cpp")
 
     list(APPEND KEYCHAIN_LIBRARIES crypt32)
 

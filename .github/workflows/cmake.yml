@@ -1,4 +1,4 @@
-name: CI
+name: Build and test
 
 on: [push]
 
@@ -29,3 +29,12 @@ jobs:
       run: cmake . -DBUILD_TESTS=yes
     - name: Build and run tests
       run: make test
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Run cmake
+      run: cmake -G "Visual Studio 16" . -DBUILD_TESTS=yes
+    - name: Build and run tests
+      run: cmake --build . --target test --config Release
