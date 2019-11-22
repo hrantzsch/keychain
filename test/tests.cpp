@@ -4,8 +4,10 @@
 using namespace keychain;
 
 TEST_CASE("Keychain", "[keychain]") {
-    auto crud = [](const std::string &package, const std::string &service,
-                   const std::string &user, const std::string &password_in) {
+    auto crud = [](const std::string &package,
+                   const std::string &service,
+                   const std::string &user,
+                   const std::string &password_in) {
         Error ec{};
         getPassword(package, service, user, ec);
         REQUIRE(ec.error == KeychainError::NotFound);

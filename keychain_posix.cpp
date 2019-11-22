@@ -55,11 +55,17 @@ void setPassword(const std::string &package, const std::string &service,
     if (!user.empty())
         label += " (" + user + ")";
 
-    gboolean result = secret_password_store_sync(
-        &schema, SECRET_COLLECTION_DEFAULT, label.c_str(), password.c_str(),
-        NULL, // not cancellable
-        &error, ServiceFieldName, service.c_str(), AccountFieldName,
-        user.c_str(), NULL);
+    gboolean result = secret_password_store_sync(&schema,
+                                                 SECRET_COLLECTION_DEFAULT,
+                                                 label.c_str(),
+                                                 password.c_str(),
+                                                 NULL, // not cancellable
+                                                 &error,
+                                                 ServiceFieldName,
+                                                 service.c_str(),
+                                                 AccountFieldName,
+                                                 user.c_str(),
+                                                 NULL);
 
     if (error != NULL) {
         err.error = KeychainError::GenericError;
@@ -75,11 +81,14 @@ std::string getPassword(const std::string &package, const std::string &service,
     GError *error = NULL;
 
     gchar *raw_passwords;
-    raw_passwords =
-        secret_password_lookup_sync(&schema,
-                                    NULL, // not cancellable
-                                    &error, ServiceFieldName, service.c_str(),
-                                    AccountFieldName, user.c_str(), NULL);
+    raw_passwords = secret_password_lookup_sync(&schema,
+                                                NULL, // not cancellable
+                                                &error,
+                                                ServiceFieldName,
+                                                service.c_str(),
+                                                AccountFieldName,
+                                                user.c_str(),
+                                                NULL);
 
     std::string password;
     if (error != NULL) {
@@ -104,11 +113,14 @@ void deletePassword(const std::string &package, const std::string &service,
     const auto schema = makeSchema(package);
     GError *error = NULL;
 
-    gboolean result =
-        secret_password_clear_sync(&schema,
-                                   NULL, // not cancellable
-                                   &error, ServiceFieldName, service.c_str(),
-                                   AccountFieldName, user.c_str(), NULL);
+    gboolean result = secret_password_clear_sync(&schema,
+                                                 NULL, // not cancellable
+                                                 &error,
+                                                 ServiceFieldName,
+                                                 service.c_str(),
+                                                 AccountFieldName,
+                                                 user.c_str(),
+                                                 NULL);
 
     if (error != NULL) {
         err.error = KeychainError::GenericError;
