@@ -1,44 +1,60 @@
 #include "catch.hpp"
-#include "keytar.h"
+#include "keychain.h"
 
-TEST_CASE("Keytar", "[keytar]") {
-    auto crud = [](const std::string &service, const std::string &account,
-                  const std::string &password_in) {
-        // The original Keytar returns passwords and reports errors as out-
-        // parameters. This fork does not set an error string (which never
-        // worked for me with the original Keytar anyway), but still uses the
-        // out-parameter. I'll be glad to change this interface.
-        std::string password_out;
+using namespace keychain;
 
-        REQUIRE(!keytar::GetPassword(service, account, &password_out));
-        CHECK(keytar::AddPassword(service, account, password_in));
+TEST_CASE("Keychain", "[keychain]") {
+    auto crud = [](const std::string &package, const std::string &service,
+                   const std::string &user, const std::string &password_in) {
+        Error ec{};
+        getPassword(package, service, user, ec);
+        REQUIRE(ec.error == KeychainError::NotFound);
 
-        CHECK(keytar::GetPassword(service, account, &password_out));
-        CHECK(password_out == password_in);
+        ec = Error{};
+        setPassword(package, service, user, password_in, ec);
+        CHECK(!ec);
 
-        const std::string better_password =
-            "123456 is the No. 1 top rated password in 2019 again!";
-        // Note that this is probably a really good password. Sorry to ruin it.
-        CHECK(keytar::AddPassword(service, account, better_password));
-        CHECK(keytar::GetPassword(service, account, &password_out));
-        CHECK(password_out == better_password);
+        ec = Error{};
+        auto password = getPassword(package, service, user, ec);
+        CHECK(!ec);
+        CHECK(password == password_in);
 
-        CHECK(keytar::DeletePassword(service, account));
-        CHECK(!keytar::GetPassword(service, account, &password_out));
+        const std::string better_password = "123456";
+
+        ec = Error{};
+        setPassword(package, service, user, better_password, ec);
+        CHECK(!ec);
+
+        ec = Error{};
+        password = getPassword(package, service, user, ec);
+        REQUIRE(!ec);
+        CHECK(password == better_password);
+
+        ec = Error{};
+        deletePassword(package, service, user, ec);
+        CHECK(!ec);
+        ec = Error{};
+        getPassword(package, service, user, ec);
+        CHECK(ec.error == KeychainError::NotFound);
     };
 
-    const std::string service = "keytar_test";
-    const std::string account = "Admin";
+    const std::string package = "com.example.keychain-tests";
+    const std::string service = "test_service";
+    const std::string user = "Admin";
     const std::string password = "hunter2";
 
-    SECTION("the happily place") { crud(service, account, password); }
+    SECTION("the happily place") { crud(package, service, user, password); }
 
-    SECTION("empty service name") { crud("", account, password); }
-    SECTION("empty account name") { crud(service, "", password); }
-    SECTION("empty password") { crud(service, account, ""); }
+    SECTION("empty service name") { crud(package, "", user, password); }
+    SECTION("empty user name") { crud(package, service, "", password); }
+    SECTION("empty password") { crud(package, service, user, ""); }
+    SECTION("both service and user name empty") {
+        crud(package, "", "", password);
+    }
 
     SECTION("long password") {
         const std::string long_pw(4097, '=');
-        crud(service, account, long_pw);
+        crud(package, service, user, long_pw);
     }
+    SECTION("unicode") { crud("🙈.🙉.🙊", "💛", "👩💻", "🔑"); }
 }
