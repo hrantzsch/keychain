@@ -23,6 +23,8 @@
  *
  */
 
+#include <vector>
+
 #include <Security/Security.h>
 
 #include "keychain.h"
@@ -32,33 +34,24 @@ namespace {
 /*!
  * Converts a CFString to a std::string
  *
- * This either uses CFStringGetCStringPtr or (if that fails)
- * CFStringGetCString, trying to be as efficient as possible.
+ * This either uses CFStringGetCStringPtr or (if that fails) CFStringGetCString.
  */
-// TODO: check this function
-std::string CFStringToStdString(CFStringRef cfstring) {
-    const char *cstr = CFStringGetCStringPtr(cfstring, kCFStringEncodingUTF8);
+std::string CFStringToStdString(const CFStringRef cfstring) {
+    const char *ccstr = CFStringGetCStringPtr(cfstring, kCFStringEncodingUTF8);
 
-    if (cstr != NULL) {
-        return std::string(cstr);
+    if (ccstr != nullptr) {
+        return std::string(ccstr);
     }
 
-    CFIndex length = CFStringGetLength(cfstring);
-    // Worst case: 2 bytes per character + NUL
-    CFIndex cstrPtrLen = length * 2 + 1;
-    char *cstrPtr = static_cast<char *>(malloc(cstrPtrLen));
+    auto utf16_pairs = CFStringGetLength(cfstring);
+    auto max_utf8_bytes =
+        CFStringGetMaximumSizeForEncoding(utf16_pairs, kCFStringEncodingUTF8);
 
-    Boolean result = CFStringGetCString(
-        cfstring, cstrPtr, cstrPtrLen, kCFStringEncodingUTF8);
+    std::vector<char> cstr(max_utf8_bytes, '\0');
+    auto result = CFStringGetCString(
+        cfstring, cstr.data(), cstr.size(), kCFStringEncodingUTF8);
 
-    std::string stdstring;
-    if (result) {
-        stdstring = std::string(cstrPtr);
-    }
-
-    free(cstrPtr);
-
-    return stdstring;
+    return result ? std::string(cstr.data()) : std::string();
 }
 
 std::string errorStatusToString(OSStatus status) {
