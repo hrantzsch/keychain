@@ -11,7 +11,7 @@ jobs:
     - name: Install dependencies
       run: sudo apt-get install dbus-x11 dbus gnome-keyring libgnome-keyring-dev libsecret-1-dev python-gnomekeyring
     - name: Run cmake
-      run: cmake .
+      run: cmake . -DBUILD_TESTS=yes
     - name: Build and run tests
       run: export DISPLAY=:99.0;
            NO_AT_BRIDGE=1;
@@ -26,6 +26,6 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Run cmake
-      run: cmake .
+      run: cmake . -DBUILD_TESTS=yes
     - name: Build and run tests
       run: make test

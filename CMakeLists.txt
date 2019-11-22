@@ -1,18 +1,15 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project("keychain")
-set(BINARY_NAME "test-keychain")
+set(PROJECT_NAME "keychain")
+project(${PROJECT_NAME})
+
+option(BUILD_TESTS "Build tests for ${PROJECT_NAME}" OFF)
 
 if (MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
 else (MSVC)
   set (CMAKE_CXX_STANDARD 17)
 endif (MSVC)
-
-# see comment in test-main.cpp
-add_library("catchmain" OBJECT "test-main.cpp")
-
-set(SOURCES "tests.cpp")
 
 if (WIN32)
     list(APPEND SOURCES "keytar_win.cc")
@@ -36,9 +33,10 @@ else (WIN32)  # assuming Linux
 
 endif (WIN32)
 
-add_executable(${BINARY_NAME} $<TARGET_OBJECTS:catchmain> ${SOURCES})
+add_library (${PROJECT_NAME} ${SOURCES})
+target_include_directories(${PROJECT_NAME} PRIVATE ${KEYCHAIN_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} ${KEYCHAIN_LIBRARIES})
 
-target_include_directories(${BINARY_NAME} PRIVATE ${KEYCHAIN_INCLUDE_DIRS})
-target_link_libraries(${BINARY_NAME} ${KEYCHAIN_LIBRARIES})
-
-add_custom_target(test ${BINARY_NAME})
+if (BUILD_TESTS)
+    add_subdirectory("test")
+endif (BUILD_TESTS)
