@@ -154,6 +154,13 @@ void setPassword(const std::string &package, const std::string &service,
         return;
     }
 
+    if (password.size() > CRED_MAX_CREDENTIAL_BLOB_SIZE) {
+        err.error = KeychainError::PasswordTooLong;
+        err.message = "Password too long.";
+        err.code = -1; // generic non-zero
+        return;
+    }
+
     CREDENTIAL cred = {0};
     cred.Type = cred_type;
     cred.TargetName = target_name;

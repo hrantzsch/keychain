@@ -4,9 +4,10 @@
 using namespace keychain;
 
 CATCH_REGISTER_ENUM(keychain::KeychainError, keychain::KeychainError::NoError,
+                    keychain::KeychainError::GenericError,
                     keychain::KeychainError::NotFound,
-                    keychain::KeychainError::AccessDenied,
-                    keychain::KeychainError::GenericError)
+                    keychain::KeychainError::PasswordTooLong,
+                    keychain::KeychainError::AccessDenied)
 
 void check_no_error(const Error &ec) {
     const std::string error =
