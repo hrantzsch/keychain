@@ -3,6 +3,19 @@
 
 using namespace keychain;
 
+CATCH_REGISTER_ENUM(keychain::KeychainError, keychain::KeychainError::NoError,
+                    keychain::KeychainError::NotFound,
+                    keychain::KeychainError::AccessDenied,
+                    keychain::KeychainError::GenericError)
+
+void check_no_error(const Error &ec) {
+    const std::string error =
+        Catch::StringMaker<keychain::KeychainError>::convert(ec.error);
+    INFO(error << " [" << ec.code << "] "
+               << ": " << ec.message);
+    CHECK(!ec);
+};
+
 TEST_CASE("Keychain", "[keychain]") {
     auto crud = [](const std::string &package,
                    const std::string &service,
@@ -14,18 +27,18 @@ TEST_CASE("Keychain", "[keychain]") {
 
         ec = Error{};
         setPassword(package, service, user, password_in, ec);
-        CHECK(!ec);
+        check_no_error(ec);
 
         ec = Error{};
         auto password = getPassword(package, service, user, ec);
-        CHECK(!ec);
+        check_no_error(ec);
         CHECK(password == password_in);
 
         const std::string better_password = "123456";
 
         ec = Error{};
         setPassword(package, service, user, better_password, ec);
-        CHECK(!ec);
+        check_no_error(ec);
 
         ec = Error{};
         password = getPassword(package, service, user, ec);
@@ -34,7 +47,7 @@ TEST_CASE("Keychain", "[keychain]") {
 
         ec = Error{};
         deletePassword(package, service, user, ec);
-        CHECK(!ec);
+        check_no_error(ec);
         ec = Error{};
         getPassword(package, service, user, ec);
         CHECK(ec.error == KeychainError::NotFound);

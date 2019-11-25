@@ -117,8 +117,9 @@ OSStatus modifyPassword(const std::string &serviceName, const std::string &user,
             item, NULL, (UInt32)password.length(), password.data());
     }
 
-    if (item)
+    if (item) {
         CFRelease(item);
+    }
 
     return status;
 }
@@ -165,9 +166,9 @@ std::string getPassword(const std::string &package, const std::string &service,
                                        NULL);
 
     updateError(err, status);
-
-    if (err || data == NULL)
+    if (err || data == NULL) {
         return "";
+    }
 
     std::string password(reinterpret_cast<const char *>(data), length);
     SecKeychainItemFreeContent(NULL, data);

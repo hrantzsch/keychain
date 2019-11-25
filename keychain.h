@@ -17,7 +17,7 @@ struct Error {
     std::string message;
     int code;
 
-    operator bool() { return KeychainError::NoError != error; }
+    operator bool() const { return KeychainError::NoError != error; }
 };
 
 std::string getPassword(const std::string &package, const std::string &service,
