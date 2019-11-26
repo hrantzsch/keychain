@@ -40,3 +40,6 @@ tags
 *.app
 
 # End of https://www.gitignore.io/api/c++
+
+keychain.sublime-workspace
+keychain.sublime-project
