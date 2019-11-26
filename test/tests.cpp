@@ -61,16 +61,27 @@ TEST_CASE("Keychain", "[keychain]") {
 
     SECTION("the happily place") { crud(package, service, user, password); }
 
+    SECTION("empty package name") { crud(package, "", user, password); }
     SECTION("empty service name") { crud(package, "", user, password); }
     SECTION("empty user name") { crud(package, service, "", password); }
     SECTION("empty password") { crud(package, service, user, ""); }
-    SECTION("both service and user name empty") {
-        crud(package, "", "", password);
-    }
+    SECTION("all empty") { crud("", "", "", ""); }
 
     SECTION("long password") {
-        const std::string long_pw(4097, '=');
-        crud(package, service, user, long_pw);
+        // Windows will report an error, other platforms succeed
+        const std::string longPassword(4097, '=');
+#ifdef KEYCHAIN_WINDOWS
+        Error ec{};
+        getPassword(package, service, user, ec);
+        REQUIRE(ec.error == KeychainError::NotFound);
+
+        ec = Error{};
+        setPassword(package, service, user, longPassword, ec);
+        CHECK(ec.error == KeychainError::PasswordTooLong);
+#else
+        crud(package, service, user, longPassword);
+#endif
     }
+
     SECTION("unicode") { crud("🙈.🙉.🙊", "💛", "👩💻", "🔑"); }
 }
