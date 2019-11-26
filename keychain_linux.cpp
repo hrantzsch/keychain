@@ -27,8 +27,6 @@
 #include "keychain.h"
 
 #include <libsecret/secret.h>
-#include <stdio.h>
-#include <unistd.h>
 
 namespace keychain {
 
@@ -99,7 +97,8 @@ std::string getPassword(const std::string &package, const std::string &service,
         return "";
     } else if (raw_passwords == NULL) {
         err.error = KeychainError::NotFound;
-        err.message = "password not found"; // TODO
+        err.message = "Password not found.";
+        err.code = -1; // generic non-zero
         return "";
     } else {
         password = raw_passwords;
