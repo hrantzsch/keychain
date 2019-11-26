@@ -8,7 +8,7 @@ option(BUILD_TESTS "Build tests for ${PROJECT_NAME}" OFF)
 if (MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
 else (MSVC)
-  set (CMAKE_CXX_STANDARD 17)
+  set (CMAKE_CXX_STANDARD 11)
 endif (MSVC)
 
 if (WIN32)
