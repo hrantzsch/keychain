@@ -38,7 +38,7 @@ const char *AccountFieldName = "username";
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #endif
 
-const SecretSchema makeSchema(const std::string &package) {
+SecretSchema makeSchema(const std::string &package) {
     return SecretSchema{package.c_str(),
                         SECRET_SCHEMA_NONE,
                         {
@@ -48,16 +48,39 @@ const SecretSchema makeSchema(const std::string &package) {
                         }};
 }
 
+std::string makeLabel(const std::string &service, const std::string &user) {
+    std::string label = service;
+
+    if (!user.empty()) {
+        label += " (" + user + ")";
+    }
+
+    return label;
+}
+
+void updateError(keychain::Error &err, GError *error) {
+    if (error == NULL) {
+        err = keychain::Error{};
+        return;
+    }
+
+    err.error = keychain::KeychainError::GenericError;
+    err.message = error->message;
+    err.code = error->code;
+    g_error_free(error);
+}
+
+} // namespace
+
+namespace keychain {
+
 void setPassword(const std::string &package, const std::string &service,
                  const std::string &user, const std::string &password,
                  Error &err) {
     const auto schema = makeSchema(package);
+    const auto label = makeLabel(service, user);
+
     GError *error = NULL;
-
-    std::string label = service;
-    if (!user.empty())
-        label += " (" + user + ")";
-
     secret_password_store_sync(&schema,
                                SECRET_COLLECTION_DEFAULT,
                                label.c_str(),
@@ -70,19 +93,14 @@ void setPassword(const std::string &package, const std::string &service,
                                user.c_str(),
                                NULL);
 
-    if (error != NULL) {
-        err.error = KeychainError::GenericError;
-        err.message = error->message;
-        err.code = error->code;
-        g_error_free(error);
-    }
+    updateError(err, error);
 }
 
 std::string getPassword(const std::string &package, const std::string &service,
                         const std::string &user, Error &err) {
     const auto schema = makeSchema(package);
-    GError *error = NULL;
 
+    GError *error = NULL;
     gchar *raw_passwords;
     raw_passwords = secret_password_lookup_sync(&schema,
                                                 NULL, // not cancellable
@@ -94,21 +112,17 @@ std::string getPassword(const std::string &package, const std::string &service,
                                                 NULL);
 
     std::string password;
-    if (error != NULL) {
-        err.error = KeychainError::GenericError;
-        err.message = error->message;
-        err.code = error->code;
-        g_error_free(error);
-        return "";
+
+    if (!err && raw_passwords != NULL) {
+        password = raw_passwords;
+        secret_password_free(raw_passwords);
     } else if (raw_passwords == NULL) {
+        // libsecret reports no error if the password was not found
         err.error = KeychainError::NotFound;
         err.message = "Password not found.";
         err.code = -1; // generic non-zero
-        return "";
-    } else {
-        password = raw_passwords;
     }
-    secret_password_free(raw_passwords);
+
     return password;
 }
 
@@ -126,12 +140,7 @@ void deletePassword(const std::string &package, const std::string &service,
                                user.c_str(),
                                NULL);
 
-    if (error != NULL) {
-        err.error = KeychainError::GenericError;
-        err.message = error->message;
-        err.code = error->code;
-        g_error_free(error);
-    }
+    updateError(err, error);
 }
 
 } // namespace keychain
