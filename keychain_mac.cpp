@@ -43,11 +43,11 @@ std::string CFStringToStdString(const CFStringRef cfstring) {
         return std::string(ccstr);
     }
 
-    auto utf16_pairs = CFStringGetLength(cfstring);
-    auto max_utf8_bytes =
-        CFStringGetMaximumSizeForEncoding(utf16_pairs, kCFStringEncodingUTF8);
+    auto utf16Pairs = CFStringGetLength(cfstring);
+    auto maxUtf8Bytes =
+        CFStringGetMaximumSizeForEncoding(utf16Pairs, kCFStringEncodingUTF8);
 
-    std::vector<char> cstr(max_utf8_bytes, '\0');
+    std::vector<char> cstr(maxUtf8Bytes, '\0');
     auto result = CFStringGetCString(
         cfstring, cstr.data(), cstr.size(), kCFStringEncodingUTF8);
 
