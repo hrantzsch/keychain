@@ -33,6 +33,11 @@ namespace keychain {
 const char *ServiceFieldName = "service";
 const char *AccountFieldName = "username";
 
+// disable warnings about missing initializers in SecretSchema
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#endif
+
 const SecretSchema makeSchema(const std::string &package) {
     return SecretSchema{package.c_str(),
                         SECRET_SCHEMA_NONE,
@@ -53,17 +58,17 @@ void setPassword(const std::string &package, const std::string &service,
     if (!user.empty())
         label += " (" + user + ")";
 
-    gboolean result = secret_password_store_sync(&schema,
-                                                 SECRET_COLLECTION_DEFAULT,
-                                                 label.c_str(),
-                                                 password.c_str(),
-                                                 NULL, // not cancellable
-                                                 &error,
-                                                 ServiceFieldName,
-                                                 service.c_str(),
-                                                 AccountFieldName,
-                                                 user.c_str(),
-                                                 NULL);
+    secret_password_store_sync(&schema,
+                               SECRET_COLLECTION_DEFAULT,
+                               label.c_str(),
+                               password.c_str(),
+                               NULL, // not cancellable
+                               &error,
+                               ServiceFieldName,
+                               service.c_str(),
+                               AccountFieldName,
+                               user.c_str(),
+                               NULL);
 
     if (error != NULL) {
         err.error = KeychainError::GenericError;
@@ -112,14 +117,14 @@ void deletePassword(const std::string &package, const std::string &service,
     const auto schema = makeSchema(package);
     GError *error = NULL;
 
-    gboolean result = secret_password_clear_sync(&schema,
-                                                 NULL, // not cancellable
-                                                 &error,
-                                                 ServiceFieldName,
-                                                 service.c_str(),
-                                                 AccountFieldName,
-                                                 user.c_str(),
-                                                 NULL);
+    secret_password_clear_sync(&schema,
+                               NULL, // not cancellable
+                               &error,
+                               ServiceFieldName,
+                               service.c_str(),
+                               AccountFieldName,
+                               user.c_str(),
+                               NULL);
 
     if (error != NULL) {
         err.error = KeychainError::GenericError;

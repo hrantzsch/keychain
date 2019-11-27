@@ -14,7 +14,7 @@ void check_no_error(const Error &ec) {
     INFO(error << " [" << ec.code << "] "
                << ": " << ec.message);
     CHECK(!ec);
-};
+}
 
 TEST_CASE("Keychain", "[keychain]") {
     auto crud = [](const std::string &package,
