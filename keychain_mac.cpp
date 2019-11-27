@@ -31,6 +31,8 @@
 
 namespace {
 
+const SecKeychainRef defaultUserKeychain = NULL; // NULL means 'default'
+
 /*!
  * Converts a CFString to a std::string
  *
@@ -54,20 +56,16 @@ std::string CFStringToStdString(const CFStringRef cfstring) {
     return result ? std::string(cstr.data()) : std::string();
 }
 
+/*!
+ * Extracts a human readable string from a status code
+ */
 std::string errorStatusToString(OSStatus status) {
-    std::string errorStr;
-    CFStringRef errorMessageString = SecCopyErrorMessageString(status, NULL);
+    const auto errorMessage = SecCopyErrorMessageString(status, NULL);
+    const auto errorString =
+        (errorMessage) ? CFStringToStdString(errorMessage) : std::string();
 
-    const char *errorCStringPtr =
-        CFStringGetCStringPtr(errorMessageString, kCFStringEncodingUTF8);
-    if (errorCStringPtr) {
-        errorStr = std::string(errorCStringPtr);
-    } else {
-        errorStr = std::string("An unknown error occurred.");
-    }
-
-    CFRelease(errorMessageString);
-    return errorStr;
+    CFRelease(errorMessage);
+    return errorString;
 }
 
 std::string makeServiceName(const std::string &package,
@@ -103,18 +101,22 @@ void updateError(keychain::Error &err, OSStatus status) {
 OSStatus modifyPassword(const std::string &serviceName, const std::string &user,
                         const std::string &password) {
     SecKeychainItemRef item = NULL;
-    OSStatus status =
-        SecKeychainFindGenericPassword(NULL,
-                                       (UInt32)serviceName.length(),
-                                       serviceName.data(),
-                                       (UInt32)user.length(),
-                                       user.data(),
-                                       NULL,
-                                       NULL,
-                                       &item);
+    OSStatus status = SecKeychainFindGenericPassword(
+        defaultUserKeychain,
+        static_cast<UInt32>(serviceName.length()),
+        serviceName.data(),
+        static_cast<UInt32>(user.length()),
+        user.data(),
+        NULL, // unused output parameter
+        NULL, // unused output parameter
+        &item);
+
     if (status == errSecSuccess) {
-        status = SecKeychainItemModifyContent(
-            item, NULL, (UInt32)password.length(), password.data());
+        status =
+            SecKeychainItemModifyContent(item,
+                                         NULL,
+                                         static_cast<UInt32>(password.length()),
+                                         password.data());
     }
 
     if (item) {
@@ -133,14 +135,14 @@ void setPassword(const std::string &package, const std::string &service,
                  Error &err) {
     const auto serviceName = makeServiceName(package, service);
     OSStatus status =
-        SecKeychainAddGenericPassword(NULL,
-                                      (UInt32)serviceName.length(),
+        SecKeychainAddGenericPassword(defaultUserKeychain,
+                                      static_cast<UInt32>(serviceName.length()),
                                       serviceName.data(),
-                                      (UInt32)user.length(),
+                                      static_cast<UInt32>(user.length()),
                                       user.data(),
-                                      (UInt32)password.length(),
+                                      static_cast<UInt32>(password.length()),
                                       password.data(),
-                                      NULL);
+                                      NULL /* unused output parameter */);
 
     if (status == errSecDuplicateItem) {
         // password exists -- override
@@ -155,23 +157,24 @@ std::string getPassword(const std::string &package, const std::string &service,
     const auto serviceName = makeServiceName(package, service);
     void *data;
     UInt32 length;
-    OSStatus status =
-        SecKeychainFindGenericPassword(NULL,
-                                       (UInt32)serviceName.length(),
-                                       serviceName.data(),
-                                       (UInt32)user.length(),
-                                       user.data(),
-                                       &length,
-                                       &data,
-                                       NULL);
+    OSStatus status = SecKeychainFindGenericPassword(
+        defaultUserKeychain,
+        static_cast<UInt32>(serviceName.length()),
+        serviceName.data(),
+        static_cast<UInt32>(user.length()),
+        user.data(),
+        &length,
+        &data,
+        NULL /* unused output parameter */);
+
+    std::string password;
 
     updateError(err, status);
-    if (err || data == NULL) {
-        return "";
+    if (!err && data != NULL) {
+        password = std::string(reinterpret_cast<const char *>(data), length);
+        SecKeychainItemFreeContent(NULL, data);
     }
 
-    std::string password(reinterpret_cast<const char *>(data), length);
-    SecKeychainItemFreeContent(NULL, data);
     return password;
 }
 
@@ -179,15 +182,16 @@ void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err) {
     const auto serviceName = makeServiceName(package, service);
     SecKeychainItemRef item;
-    OSStatus status =
-        SecKeychainFindGenericPassword(NULL,
-                                       (UInt32)serviceName.length(),
-                                       serviceName.data(),
-                                       (UInt32)user.length(),
-                                       user.data(),
-                                       NULL,
-                                       NULL,
-                                       &item);
+    OSStatus status = SecKeychainFindGenericPassword(
+        defaultUserKeychain,
+        static_cast<UInt32>(serviceName.length()),
+        serviceName.data(),
+        static_cast<UInt32>(user.length()),
+        user.data(),
+        NULL, // unused output parameter
+        NULL, // unused output parameter
+        &item);
+
     updateError(err, status);
     if (!err) {
         status = SecKeychainItemDelete(item);
