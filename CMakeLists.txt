@@ -6,10 +6,17 @@ project(${PROJECT_NAME})
 option(BUILD_TESTS "Build tests for ${PROJECT_NAME}" OFF)
 
 if (MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++11")
 else (MSVC)
-  set (CMAKE_CXX_STANDARD 17)
+    set (CMAKE_CXX_STANDARD 11)
 endif (MSVC)
+
+# enable compiler warnings
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_COMPILER_IS_GNUCC)
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -Wextra -pedantic")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W2 /WX")
+endif ()
 
 if (WIN32)
     list(APPEND SOURCES "keytar_win.cc")
