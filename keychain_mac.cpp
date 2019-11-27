@@ -61,10 +61,13 @@ std::string CFStringToStdString(const CFStringRef cfstring) {
  */
 std::string errorStatusToString(OSStatus status) {
     const auto errorMessage = SecCopyErrorMessageString(status, NULL);
-    const auto errorString =
-        (errorMessage) ? CFStringToStdString(errorMessage) : std::string();
+    std::string errorString;
 
-    CFRelease(errorMessage);
+    if (errorMessage) {
+        errorString = CFStringToStdString(errorMessage);
+        CFRelease(errorMessage);
+    }
+
     return errorString;
 }
 
