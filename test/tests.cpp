@@ -67,10 +67,10 @@ TEST_CASE("Keychain", "[keychain]") {
     SECTION("empty password") { crud(package, service, user, ""); }
     SECTION("all empty") { crud("", "", "", ""); }
 
-    SECTION("long password") {
-        // Windows will report an error, other platforms succeed
-        const std::string longPassword(4097, '=');
 #ifdef KEYCHAIN_WINDOWS
+    // Windows will report an error, other platforms succeed
+    SECTION("long password (windows)") {
+        const std::string longPassword(4097, '=');
         Error ec{};
         getPassword(package, service, user, ec);
         REQUIRE(ec.error == KeychainError::NotFound);
@@ -78,10 +78,13 @@ TEST_CASE("Keychain", "[keychain]") {
         ec = Error{};
         setPassword(package, service, user, longPassword, ec);
         CHECK(ec.error == KeychainError::PasswordTooLong);
-#else
-        crud(package, service, user, longPassword);
-#endif
     }
+#else
+    SECTION("long password (unix)") {
+        const std::string longPassword(4097, '=');
+        crud(package, service, user, longPassword);
+    }
+#endif
 
     SECTION("unicode") { crud("🙈.🙉.🙊", "💛", "👩💻", "🔑"); }
 }

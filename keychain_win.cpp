@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2013 GitHub Inc.
- * Copyright (c) 2019 Hannes Rantzsch
+ * Copyright (c) 2019 Hannes Rantzsch, René Meusel
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -38,53 +38,78 @@
 
 namespace {
 
-static DWORD cred_type = CRED_TYPE_GENERIC;
+static const DWORD kCredType = CRED_TYPE_GENERIC;
 
 struct LpwstrDeleter {
     void operator()(WCHAR *p) const { delete[] p; }
 };
+
+//! Wrapper around a WCHAR pointer a.k.a. LPWStr to take care of memory handling
 using ScopedLpwstr = std::unique_ptr<WCHAR, LpwstrDeleter>;
 
-LPWSTR utf8ToWideChar(const std::string &utf8) {
-    int len = MultiByteToWideChar(
+/*!
+ * Converts a UTF-8 std::string to wide char
+ *
+ * Uses MultiByteToWideChar to convert the input string and wraps the result in
+ * a ScopedLpwstr. Returns nullptr on failure.
+ */
+ScopedLpwstr utf8ToWideChar(const std::string &utf8) {
+    int requiredBufSize = MultiByteToWideChar(
         CP_UTF8,
         0, // flags must be 0 for UTF-8
         utf8.c_str(),
         -1,      // rely on null-terminated input string
         nullptr, // no out-buffer needed
-        0); // return required buffer size rather than writing to an out-buffer
-    if (len == 0) {
+        0);      // return required buffer size; don't write to out-buffer
+
+    // 0 means MultiByteToWideChar did not succeed. Note that even an empty
+    // string yields 1 on success due to the terminating null character needed
+    // in the out-buffer.
+    if (requiredBufSize == 0) {
         return nullptr;
     }
 
-    LPWSTR buffer = new WCHAR[len];
-    int bytesWritten =
-        MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, buffer, len);
+    ScopedLpwstr lwstr(new WCHAR[requiredBufSize]);
+    int bytesWritten = MultiByteToWideChar(
+        CP_UTF8, 0, utf8.c_str(), -1, lwstr.get(), requiredBufSize);
 
     if (bytesWritten == 0) {
-        // failure; cleanup buffer manually
-        delete[] buffer;
         return nullptr;
     }
 
-    return buffer;
+    return lwstr;
 }
 
+/*!
+ * Converts a wide char pointer to a std::string
+ *
+ * Note that this function provides no reliable indication of errors and simply
+ * returns an empty string in case it fails.
+ */
 std::string wideCharToAnsi(LPWSTR wChar) {
     std::string result;
     if (wChar == nullptr) {
         return result;
     }
 
-    int len =
-        WideCharToMultiByte(CP_ACP, 0, wChar, -1, nullptr, 0, nullptr, nullptr);
-    if (len == 0) {
+    int requiredBufSize = WideCharToMultiByte(
+        CP_ACP,
+        0, // flags
+        wChar,
+        -1,       // rely on null-terminated input string
+        nullptr,  // no out-buffer needed
+        0,        // return required buffer size; don't write to out-buffer
+        nullptr,  // use system default for non representable characters
+        nullptr); // unused output parameter
+
+    // 0 indicates error; see comment in utf8ToWideChar.
+    if (requiredBufSize == 0) {
         return result;
     }
 
-    std::unique_ptr<char[]> buffer(new char[len]);
+    std::unique_ptr<char[]> buffer(new char[requiredBufSize]);
     int bytesWritten = WideCharToMultiByte(
-        CP_ACP, 0, wChar, -1, buffer.get(), len, nullptr, nullptr);
+        CP_ACP, 0, wChar, -1, buffer.get(), requiredBufSize, nullptr, nullptr);
 
     if (bytesWritten != 0) {
         result = std::string(buffer.get());
@@ -93,27 +118,24 @@ std::string wideCharToAnsi(LPWSTR wChar) {
     return result;
 }
 
+//! Get an explanatory message for an error code obtained via ::GetLastError()
 std::string getErrorMessage(DWORD errorCode) {
     std::string errMsg;
     LPWSTR errBuffer = nullptr;
-    ::FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-                    nullptr, // ignored for the flags we use
-                    errorCode,
-                    0, // figure out LANGID automatically
-                    reinterpret_cast<LPWSTR>(&errBuffer),
-                    0,        // figure out out-buffer size automatically
-                    nullptr); // no additional arguments
-    if (errBuffer != nullptr) {
+    auto written = ::FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+        nullptr, // ignored for the flags we use
+        errorCode,
+        0, // figure out LANGID automatically
+        reinterpret_cast<LPWSTR>(&errBuffer),
+        0,        // figure out out-buffer size automatically
+        nullptr); // no additional arguments
+
+    if (written > 0 && errBuffer != nullptr) {
         errMsg = wideCharToAnsi(errBuffer);
         LocalFree(errBuffer);
     }
     return errMsg;
-}
-
-std::string makeTargetName(const std::string &package,
-                           const std::string &service,
-                           const std::string &user) {
-    return package + "." + service + '/' + user;
 }
 
 void updateError(keychain::Error &err) {
@@ -130,6 +152,17 @@ void updateError(keychain::Error &err) {
                     : keychain::KeychainError::GenericError;
 }
 
+/*!
+ * Create the target name used to lookup and store credentials
+ *
+ * The result is wrapped in a ScopedLpwstr.
+ */
+ScopedLpwstr makeTargetName(const std::string &package,
+                            const std::string &service,
+                            const std::string &user) {
+    return utf8ToWideChar(package + "." + service + '/' + user);
+}
+
 } // namespace
 
 namespace keychain {
@@ -139,8 +172,7 @@ void setPassword(const std::string &package, const std::string &service,
                  Error &err) {
     ::SetLastError(0); // clear thread-global error
 
-    ScopedLpwstr target_name(
-        utf8ToWideChar(makeTargetName(package, service, user)));
+    auto target_name = makeTargetName(package, service, user);
     if (!target_name) {
         updateError(err);
         return;
@@ -161,7 +193,7 @@ void setPassword(const std::string &package, const std::string &service,
     }
 
     CREDENTIAL cred = {0};
-    cred.Type = cred_type;
+    cred.Type = kCredType;
     cred.TargetName = target_name.get();
     cred.UserName = user_name.get();
     cred.CredentialBlobSize = static_cast<DWORD>(password.size());
@@ -177,15 +209,14 @@ std::string getPassword(const std::string &package, const std::string &service,
     ::SetLastError(0); // clear thread-global error
     std::string password;
 
-    ScopedLpwstr target_name(
-        utf8ToWideChar(makeTargetName(package, service, user)));
+    auto target_name = makeTargetName(package, service, user);
     if (!target_name) {
         updateError(err);
         return password;
     }
 
     CREDENTIAL *cred;
-    bool result = ::CredRead(target_name.get(), cred_type, 0, &cred);
+    bool result = ::CredRead(target_name.get(), kCredType, 0, &cred);
     updateError(err);
 
     if (!err && result) {
@@ -200,10 +231,9 @@ void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err) {
     ::SetLastError(0); // clear thread-global error
 
-    ScopedLpwstr target_name(
-        utf8ToWideChar(makeTargetName(package, service, user)));
+    auto target_name = makeTargetName(package, service, user);
     if (target_name) {
-        ::CredDelete(target_name.get(), cred_type, 0);
+        ::CredDelete(target_name.get(), kCredType, 0);
     }
     updateError(err);
 }
