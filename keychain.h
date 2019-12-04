@@ -27,7 +27,50 @@
 
 #include <string>
 
+/*! \brief A thin wrapper to provide cross-platform access to the operating
+ *         system's credentials storage.
+ *
+ * keychain provides the functions getPassword, setPassword, and deletePassword.
+ *
+ * All of these functions require three input parameters to identify the
+ * credential that should be retrieved or manipulated: package, service, and
+ * user. These identifiers will be mangled differently on each OS to correspond
+ * to the OS API.
+ * While none of the supported OSes has specific requirements to the format
+ * identifiers, the reverse domain name format is recommended for the package
+ * parameter in order to correspond with conventions.
+ *
+ * In addition, each function expects an instance of keychain::Error as an
+ * output parameter to indicate success or failure. Note that the error
+ * parameter must not already be set to an error at the time the function is
+ * called.
+ *
+ * Also note that all three functions are blocking (potentially indefinitely)
+ * for example if the OS prompts the user to unlock their credentials storage.
+ */
 namespace keychain {
+
+struct Error;
+
+//! \brief Retrieve a password
+std::string getPassword(const std::string &package, const std::string &service,
+                        const std::string &user, Error &err);
+
+/*! \brief Insert or update a password
+ *
+ * Existing passwords will be overwritten.
+ */
+void setPassword(const std::string &package, const std::string &service,
+                 const std::string &user, const std::string &password,
+                 Error &err);
+
+/*! \brief Insert or update a password
+ *
+ * Trying to delete a password that does not exist will result in a NotFound
+ * error.
+ */
+void deletePassword(const std::string &package, const std::string &service,
+                    const std::string &user, Error &err);
 
 enum class ErrorType {
     // update CATCH_REGISTER_ENUM in tests.cpp when changing this
@@ -39,23 +82,36 @@ enum class ErrorType {
     AccessDenied,         // MacOS only
 };
 
+/*! \brief A struct to collect error information
+ *
+ * An instance of this struct is used as an output parameter to indicate success
+ * or failure. Note that Errors should not already contain an error when handed
+ * to a function.
+ */
 struct Error {
+    /*! \brief The type or reason of the error
+     *
+     * Note that some types of errors can only occur on certain platforms. Where
+     * a platform-specific error is occurs on one platform, both NoError and a
+     * more generic error can occur on other platforms.
+     */
     ErrorType type;
+
+    /*! \brief A human-readable explanatory error message
+     *
+     * In most cases this message is obtained from the operating system.
+     */
     std::string message;
+
+    /*! \brief The "native" error code set by the operating system
+     *
+     * Even for the same type of error this value will differ across platforms.
+     */
     int code;
 
+    //! \brief Checks if the error type is not NoError
     operator bool() const { return ErrorType::NoError != type; }
 };
-
-std::string getPassword(const std::string &package, const std::string &service,
-                        const std::string &user, Error &err);
-
-void setPassword(const std::string &package, const std::string &service,
-                 const std::string &user, const std::string &password,
-                 Error &err);
-
-void deletePassword(const std::string &package, const std::string &service,
-                    const std::string &user, Error &err);
 
 } // namespace keychain
 
