@@ -19,11 +19,15 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif ()
 
 if (WIN32)
-    list(APPEND SOURCES "keytar_win.cc")
+    add_definitions(-DKEYCHAIN_WINDOWS=1)
+
+    list(APPEND SOURCES "keychain_win.cpp")
 
     list(APPEND KEYCHAIN_LIBRARIES crypt32)
 
 elseif (APPLE)
+    add_definitions(-DKEYCHAIN_MACOS=1)
+
     list(APPEND SOURCES "keychain_mac.cpp")
 
     find_library(COREFOUNDATION_LIBRARY CoreFoundation REQUIRED)
@@ -33,6 +37,8 @@ elseif (APPLE)
     list(APPEND KEYCHAIN_LIBRARIES ${SECURITY_LIBRARY})
 
 else (WIN32)  # assuming Linux
+    add_definitions(-DKEYCHAIN_LINUX=1)
+
     list(APPEND SOURCES "keychain_linux.cpp")
 
     find_package(PkgConfig REQUIRED)

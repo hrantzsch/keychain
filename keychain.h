@@ -30,10 +30,13 @@
 namespace keychain {
 
 enum class KeychainError {
+    // update CATCH_REGISTER_ENUM in tests.cpp when changing this
     NoError = 0,
-    NotFound = 10, // requested password was not found
-    AccessDenied,
     GenericError,
+    NotFound,
+    // OS-specific errors
+    PasswordTooLong = 10, // Windows only
+    AccessDenied,         // MacOS only (TODO)
 };
 
 struct Error {

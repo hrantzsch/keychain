@@ -4,9 +4,10 @@
 using namespace keychain;
 
 CATCH_REGISTER_ENUM(keychain::KeychainError, keychain::KeychainError::NoError,
+                    keychain::KeychainError::GenericError,
                     keychain::KeychainError::NotFound,
-                    keychain::KeychainError::AccessDenied,
-                    keychain::KeychainError::GenericError)
+                    keychain::KeychainError::PasswordTooLong,
+                    keychain::KeychainError::AccessDenied)
 
 void check_no_error(const Error &ec) {
     const std::string error =
@@ -60,16 +61,30 @@ TEST_CASE("Keychain", "[keychain]") {
 
     SECTION("the happily place") { crud(package, service, user, password); }
 
+    SECTION("empty package name") { crud(package, "", user, password); }
     SECTION("empty service name") { crud(package, "", user, password); }
     SECTION("empty user name") { crud(package, service, "", password); }
     SECTION("empty password") { crud(package, service, user, ""); }
-    SECTION("both service and user name empty") {
-        crud(package, "", "", password);
-    }
+    SECTION("all empty") { crud("", "", "", ""); }
 
-    SECTION("long password") {
-        const std::string long_pw(4097, '=');
-        crud(package, service, user, long_pw);
+#ifdef KEYCHAIN_WINDOWS
+    // Windows will report an error, other platforms succeed
+    SECTION("long password (windows)") {
+        const std::string longPassword(4097, '=');
+        Error ec{};
+        getPassword(package, service, user, ec);
+        REQUIRE(ec.error == KeychainError::NotFound);
+
+        ec = Error{};
+        setPassword(package, service, user, longPassword, ec);
+        CHECK(ec.error == KeychainError::PasswordTooLong);
     }
+#else
+    SECTION("long password (unix)") {
+        const std::string longPassword(4097, '=');
+        crud(package, service, user, longPassword);
+    }
+#endif
+
     SECTION("unicode") { crud("🙈.🙉.🙊", "💛", "👩💻", "🔑"); }
 }
