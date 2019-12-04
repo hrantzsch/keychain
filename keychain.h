@@ -29,22 +29,22 @@
 
 namespace keychain {
 
-enum class KeychainError {
+enum class ErrorType {
     // update CATCH_REGISTER_ENUM in tests.cpp when changing this
     NoError = 0,
     GenericError,
     NotFound,
     // OS-specific errors
     PasswordTooLong = 10, // Windows only
-    AccessDenied,         // MacOS only (TODO)
+    AccessDenied,         // MacOS only
 };
 
 struct Error {
-    KeychainError error;
+    ErrorType type;
     std::string message;
     int code;
 
-    operator bool() const { return KeychainError::NoError != error; }
+    operator bool() const { return ErrorType::NoError != type; }
 };
 
 std::string getPassword(const std::string &package, const std::string &service,

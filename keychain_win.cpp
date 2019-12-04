@@ -147,9 +147,8 @@ void updateError(keychain::Error &err) {
 
     err.message = getErrorMessage(code);
     err.code = code;
-    err.error = err.code == ERROR_NOT_FOUND
-                    ? keychain::KeychainError::NotFound
-                    : keychain::KeychainError::GenericError;
+    err.type = err.code == ERROR_NOT_FOUND ? keychain::ErrorType::NotFound
+                                           : keychain::ErrorType::GenericError;
 }
 
 /*!
@@ -186,7 +185,7 @@ void setPassword(const std::string &package, const std::string &service,
 
     if (password.size() > CRED_MAX_CREDENTIAL_BLOB_SIZE ||
         password.size() > DWORD_MAX) {
-        err.error = KeychainError::PasswordTooLong;
+        err.type = ErrorType::PasswordTooLong;
         err.message = "Password too long.";
         err.code = -1; // generic non-zero
         return;

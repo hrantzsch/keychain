@@ -89,10 +89,23 @@ void updateError(keychain::Error &err, OSStatus status) {
     }
 
     err.message = errorStatusToString(status);
-    err.code = status; // TODO check conversion
-    err.error = status == errSecItemNotFound
-                    ? keychain::KeychainError::NotFound
-                    : keychain::KeychainError::GenericError;
+    err.code = status;
+
+    switch (status) {
+    case errSecItemNotFound:
+        err.type = keychain::ErrorType::NotFound;
+        break;
+
+    // potential errors in case the user needs to unlock the keychain first
+    case errSecUserCanceled:        // user pressed the Cancel button
+    case errSecAuthFailed:          // too many failed password attempts
+    case errSecInteractionRequired: // user interaction required but not allowed
+        err.type = keychain::ErrorType::AccessDenied;
+        break;
+
+    default:
+        err.type = keychain::ErrorType::GenericError;
+    }
 }
 
 /*!

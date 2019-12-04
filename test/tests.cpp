@@ -3,15 +3,18 @@
 
 using namespace keychain;
 
-CATCH_REGISTER_ENUM(keychain::KeychainError, keychain::KeychainError::NoError,
-                    keychain::KeychainError::GenericError,
-                    keychain::KeychainError::NotFound,
-                    keychain::KeychainError::PasswordTooLong,
-                    keychain::KeychainError::AccessDenied)
+// clang-format off
+CATCH_REGISTER_ENUM(keychain::ErrorType,
+                    keychain::ErrorType::NoError,
+                    keychain::ErrorType::GenericError,
+                    keychain::ErrorType::NotFound,
+                    keychain::ErrorType::PasswordTooLong,
+                    keychain::ErrorType::AccessDenied)
+// clang-format on
 
 void check_no_error(const Error &ec) {
     const std::string error =
-        Catch::StringMaker<keychain::KeychainError>::convert(ec.error);
+        Catch::StringMaker<keychain::ErrorType>::convert(ec.type);
     INFO(error << " [" << ec.code << "] "
                << ": " << ec.message);
     CHECK(!ec);
@@ -24,7 +27,7 @@ TEST_CASE("Keychain", "[keychain]") {
                    const std::string &password_in) {
         Error ec{};
         getPassword(package, service, user, ec);
-        REQUIRE(ec.error == KeychainError::NotFound);
+        REQUIRE(ec.type == ErrorType::NotFound);
 
         ec = Error{};
         setPassword(package, service, user, password_in, ec);
@@ -51,7 +54,7 @@ TEST_CASE("Keychain", "[keychain]") {
         check_no_error(ec);
         ec = Error{};
         getPassword(package, service, user, ec);
-        CHECK(ec.error == KeychainError::NotFound);
+        CHECK(ec.type == ErrorType::NotFound);
     };
 
     const std::string package = "com.example.keychain-tests";
@@ -73,11 +76,11 @@ TEST_CASE("Keychain", "[keychain]") {
         const std::string longPassword(4097, '=');
         Error ec{};
         getPassword(package, service, user, ec);
-        REQUIRE(ec.error == KeychainError::NotFound);
+        REQUIRE(ec.type == ErrorType::NotFound);
 
         ec = Error{};
         setPassword(package, service, user, longPassword, ec);
-        CHECK(ec.error == KeychainError::PasswordTooLong);
+        CHECK(ec.type == ErrorType::PasswordTooLong);
     }
 #else
     SECTION("long password (unix)") {
@@ -87,4 +90,10 @@ TEST_CASE("Keychain", "[keychain]") {
 #endif
 
     SECTION("unicode") { crud("🙈.🙉.🙊", "💛", "👩💻", "🔑"); }
+
+    SECTION("deleting a password that does not exist results in NotFound") {
+        Error ec{};
+        deletePassword("no.package", "no.service", "no.user", ec);
+        CHECK(ec.type == ErrorType::NotFound);
+    }
 }

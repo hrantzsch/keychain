@@ -28,7 +28,7 @@
 
 #include <libsecret/secret.h>
 
-namespace keychain {
+namespace {
 
 const char *ServiceFieldName = "service";
 const char *AccountFieldName = "username";
@@ -64,10 +64,16 @@ void updateError(keychain::Error &err, GError *error) {
         return;
     }
 
-    err.error = keychain::KeychainError::GenericError;
+    err.type = keychain::ErrorType::GenericError;
     err.message = error->message;
     err.code = error->code;
     g_error_free(error);
+}
+
+void setErrorNotFound(keychain::Error &err) {
+    err.type = keychain::ErrorType::NotFound;
+    err.message = "Password not found.";
+    err.code = -1; // generic non-zero
 }
 
 } // namespace
@@ -111,6 +117,7 @@ std::string getPassword(const std::string &package, const std::string &service,
                                                 user.c_str(),
                                                 NULL);
 
+    updateError(err, error);
     std::string password;
 
     if (!err && raw_passwords != NULL) {
@@ -118,9 +125,7 @@ std::string getPassword(const std::string &package, const std::string &service,
         secret_password_free(raw_passwords);
     } else if (raw_passwords == NULL) {
         // libsecret reports no error if the password was not found
-        err.error = KeychainError::NotFound;
-        err.message = "Password not found.";
-        err.code = -1; // generic non-zero
+        setErrorNotFound(err);
     }
 
     return password;
@@ -131,16 +136,21 @@ void deletePassword(const std::string &package, const std::string &service,
     const auto schema = makeSchema(package);
     GError *error = NULL;
 
-    secret_password_clear_sync(&schema,
-                               NULL, // not cancellable
-                               &error,
-                               ServiceFieldName,
-                               service.c_str(),
-                               AccountFieldName,
-                               user.c_str(),
-                               NULL);
+    bool deleted = secret_password_clear_sync(&schema,
+                                              NULL, // not cancellable
+                                              &error,
+                                              ServiceFieldName,
+                                              service.c_str(),
+                                              AccountFieldName,
+                                              user.c_str(),
+                                              NULL);
 
     updateError(err, error);
+
+    if (!err && !deleted) {
+        // password did not exist is considered an error
+        setErrorNotFound(err);
+    }
 }
 
 } // namespace keychain
