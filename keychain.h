@@ -33,14 +33,14 @@
  * keychain provides the functions getPassword, setPassword, and deletePassword.
  *
  * All of these functions require three input parameters to identify the
- * credential that should be retrieved or manipulated: package, service, and
- * user. These identifiers will be mangled differently on each OS to correspond
- * to the OS API.
+ * credential that should be retrieved or manipulated: `package`, `service`, and
+ * `user`. These identifiers will be mangled differently on each OS to
+ * correspond to the OS API.
  * While none of the supported OSes has specific requirements to the format
- * identifiers, the reverse domain name format is recommended for the package
+ * identifiers, the reverse domain name format is recommended for the `package`
  * parameter in order to correspond with conventions.
  *
- * In addition, each function expects an instance of keychain::Error as an
+ * In addition, each function expects an instance of `keychain::Error` as an
  * output parameter to indicate success or failure. Note that the error
  * parameter must not already be set to an error at the time the function is
  * called.
@@ -52,13 +52,23 @@ namespace keychain {
 
 struct Error;
 
-//! \brief Retrieve a password
+/*! \brief Retrieve a password
+ *
+ * \param package, service, user Used to identify the password to get
+ * \param err Output parameter set to indicate what error occurred, if any
+ *
+ * \return The password, if the function was successful
+ */
 std::string getPassword(const std::string &package, const std::string &service,
                         const std::string &user, Error &err);
 
 /*! \brief Insert or update a password
  *
  * Existing passwords will be overwritten.
+ *
+ * \param package, service, user Used to identify the password to get
+ * \param password The new password
+ * \param err Output parameter set to indicate what error occurred, if any
  */
 void setPassword(const std::string &package, const std::string &service,
                  const std::string &user, const std::string &password,
@@ -68,6 +78,9 @@ void setPassword(const std::string &package, const std::string &service,
  *
  * Trying to delete a password that does not exist will result in a NotFound
  * error.
+ *
+ * \param package, service, user Used to identify the password to get
+ * \param err Output parameter set to indicate what error occurred, if any
  */
 void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err);
@@ -79,7 +92,7 @@ enum class ErrorType {
     NotFound,
     // OS-specific errors
     PasswordTooLong = 10, // Windows only
-    AccessDenied,         // MacOS only
+    AccessDenied,         // macOS only
 };
 
 /*! \brief A struct to collect error information
@@ -91,9 +104,9 @@ enum class ErrorType {
 struct Error {
     /*! \brief The type or reason of the error
      *
-     * Note that some types of errors can only occur on certain platforms. Where
-     * a platform-specific error is occurs on one platform, both NoError and a
-     * more generic error can occur on other platforms.
+     * Note that some types of errors can only occur on certain platforms. In
+     * cases where a platform-specific error occurs on one platform, both
+     * NoError or some other (more generic) error might occur on others.
      */
     ErrorType type;
 
