@@ -168,8 +168,6 @@ namespace keychain {
 void setPassword(const std::string &package, const std::string &service,
                  const std::string &user, const std::string &password,
                  Error &err) {
-    ::SetLastError(0); // clear thread-global error
-
     auto target_name = makeTargetName(package, service, user);
     if (!target_name) {
         updateError(err);
@@ -198,13 +196,13 @@ void setPassword(const std::string &package, const std::string &service,
     cred.CredentialBlob = (LPBYTE)(password.data());
     cred.Persist = CRED_PERSIST_ENTERPRISE;
 
-    ::CredWrite(&cred, 0);
-    updateError(err);
+    if (::CredWrite(&cred, 0) == FALSE) {
+        updateError(err);
+    }
 }
 
 std::string getPassword(const std::string &package, const std::string &service,
                         const std::string &user, Error &err) {
-    ::SetLastError(0); // clear thread-global error
     std::string password;
 
     auto target_name = makeTargetName(package, service, user);
@@ -215,25 +213,28 @@ std::string getPassword(const std::string &package, const std::string &service,
 
     CREDENTIAL *cred;
     bool result = ::CredRead(target_name.get(), kCredType, 0, &cred);
-    updateError(err);
 
-    if (!err && result) {
+    if (result == TRUE) {
         password = std::string(reinterpret_cast<char *>(cred->CredentialBlob),
                                cred->CredentialBlobSize);
         ::CredFree(cred);
+    } else {
+        updateError(err);
     }
+
     return password;
 }
 
 void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err) {
-    ::SetLastError(0); // clear thread-global error
-
     auto target_name = makeTargetName(package, service, user);
-    if (target_name) {
-        ::CredDelete(target_name.get(), kCredType, 0);
+    if (!target_name) {
+        return;
     }
-    updateError(err);
+
+    if (::CredDelete(target_name.get(), kCredType, 0) == FALSE) {
+        updateError(err);
+    }
 }
 
 } // namespace keychain
