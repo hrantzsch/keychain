@@ -157,8 +157,8 @@ void updateError(keychain::Error &err) {
  */
 ScopedLpwstr makeTargetName(const std::string &package,
                             const std::string &service, const std::string &user,
-                            Error &err) {
-    const auto result = utf8ToWideChar(package + "." + service + '/' + user);
+                            keychain::Error &err) {
+    auto result = utf8ToWideChar(package + "." + service + '/' + user);
     if (!result) {
         updateError(err);
 
@@ -166,7 +166,7 @@ ScopedLpwstr makeTargetName(const std::string &package,
         if (!err) {
             err.type = keychain::ErrorType::GenericError;
             err.message = "failed to create credential target name";
-            err.code = -1 // generic non-zero
+            err.code = -1; // generic non-zero
         }
     }
 
