@@ -33,8 +33,7 @@ namespace {
 
 const SecKeychainRef defaultUserKeychain = NULL; // NULL means 'default'
 
-/*!
- * Converts a CFString to a std::string
+/*! \brief Converts a CFString to a std::string
  *
  * This either uses CFStringGetCStringPtr or (if that fails) CFStringGetCString.
  */
@@ -56,9 +55,7 @@ std::string CFStringToStdString(const CFStringRef cfstring) {
     return result ? std::string(cstr.data()) : std::string();
 }
 
-/*!
- * Extracts a human readable string from a status code
- */
+//! \brief Extracts a human readable string from a status code
 std::string errorStatusToString(OSStatus status) {
     const auto errorMessage = SecCopyErrorMessageString(status, NULL);
     std::string errorString;
@@ -76,8 +73,7 @@ std::string makeServiceName(const std::string &package,
     return package + "." + service;
 }
 
-/*!
- * Update error information
+/*! \brief Update error information
  *
  * If status indicates an error condition, set message, code and error type.
  * Otherwise, set err to success.
@@ -89,14 +85,26 @@ void updateError(keychain::Error &err, OSStatus status) {
     }
 
     err.message = errorStatusToString(status);
-    err.code = status; // TODO check conversion
-    err.error = status == errSecItemNotFound
-                    ? keychain::KeychainError::NotFound
-                    : keychain::KeychainError::GenericError;
+    err.code = status;
+
+    switch (status) {
+    case errSecItemNotFound:
+        err.type = keychain::ErrorType::NotFound;
+        break;
+
+    // potential errors in case the user needs to unlock the keychain first
+    case errSecUserCanceled:        // user pressed the Cancel button
+    case errSecAuthFailed:          // too many failed password attempts
+    case errSecInteractionRequired: // user interaction required but not allowed
+        err.type = keychain::ErrorType::AccessDenied;
+        break;
+
+    default:
+        err.type = keychain::ErrorType::GenericError;
+    }
 }
 
-/*!
- * Modify an existing password
+/*! \brief Modify an existing password
  *
  * Helper function that tries to find an existing password in the keychain and
  * modifies it.

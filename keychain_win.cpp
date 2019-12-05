@@ -47,8 +47,7 @@ struct LpwstrDeleter {
 //! Wrapper around a WCHAR pointer a.k.a. LPWStr to take care of memory handling
 using ScopedLpwstr = std::unique_ptr<WCHAR, LpwstrDeleter>;
 
-/*!
- * Converts a UTF-8 std::string to wide char
+/*! \brief Converts a UTF-8 std::string to wide char
  *
  * Uses MultiByteToWideChar to convert the input string and wraps the result in
  * a ScopedLpwstr. Returns nullptr on failure.
@@ -80,8 +79,7 @@ ScopedLpwstr utf8ToWideChar(const std::string &utf8) {
     return lwstr;
 }
 
-/*!
- * Converts a wide char pointer to a std::string
+/*! \brief Converts a wide char pointer to a std::string
  *
  * Note that this function provides no reliable indication of errors and simply
  * returns an empty string in case it fails.
@@ -118,7 +116,9 @@ std::string wideCharToAnsi(LPWSTR wChar) {
     return result;
 }
 
-//! Get an explanatory message for an error code obtained via ::GetLastError()
+/*! /brief Get an explanatory message for an error code obtained via
+ * ::GetLastError()
+ */
 std::string getErrorMessage(DWORD errorCode) {
     std::string errMsg;
     LPWSTR errBuffer = nullptr;
@@ -147,13 +147,11 @@ void updateError(keychain::Error &err) {
 
     err.message = getErrorMessage(code);
     err.code = code;
-    err.error = err.code == ERROR_NOT_FOUND
-                    ? keychain::KeychainError::NotFound
-                    : keychain::KeychainError::GenericError;
+    err.type = err.code == ERROR_NOT_FOUND ? keychain::ErrorType::NotFound
+                                           : keychain::ErrorType::GenericError;
 }
 
-/*!
- * Create the target name used to lookup and store credentials
+/*! /brief Create the target name used to lookup and store credentials
  *
  * The result is wrapped in a ScopedLpwstr.
  */
@@ -186,7 +184,7 @@ void setPassword(const std::string &package, const std::string &service,
 
     if (password.size() > CRED_MAX_CREDENTIAL_BLOB_SIZE ||
         password.size() > DWORD_MAX) {
-        err.error = KeychainError::PasswordTooLong;
+        err.type = ErrorType::PasswordTooLong;
         err.message = "Password too long.";
         err.code = -1; // generic non-zero
         return;
