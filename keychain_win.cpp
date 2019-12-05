@@ -156,9 +156,14 @@ void updateError(keychain::Error &err) {
  * The result is wrapped in a ScopedLpwstr.
  */
 ScopedLpwstr makeTargetName(const std::string &package,
-                            const std::string &service,
-                            const std::string &user) {
-    return utf8ToWideChar(package + "." + service + '/' + user);
+                            const std::string &service, const std::string &user,
+                            Error &err) {
+    const auto result = utf8ToWideChar(package + "." + service + '/' + user);
+    if (!result) {
+        updateError(err);
+    }
+
+    return result;
 }
 
 } // namespace
@@ -168,9 +173,8 @@ namespace keychain {
 void setPassword(const std::string &package, const std::string &service,
                  const std::string &user, const std::string &password,
                  Error &err) {
-    auto target_name = makeTargetName(package, service, user);
-    if (!target_name) {
-        updateError(err);
+    auto target_name = makeTargetName(package, service, user, err);
+    if (err) {
         return;
     }
 
@@ -205,9 +209,8 @@ std::string getPassword(const std::string &package, const std::string &service,
                         const std::string &user, Error &err) {
     std::string password;
 
-    auto target_name = makeTargetName(package, service, user);
-    if (!target_name) {
-        updateError(err);
+    auto target_name = makeTargetName(package, service, user, err);
+    if (err) {
         return password;
     }
 
@@ -227,8 +230,8 @@ std::string getPassword(const std::string &package, const std::string &service,
 
 void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err) {
-    auto target_name = makeTargetName(package, service, user);
-    if (!target_name) {
+    auto target_name = makeTargetName(package, service, user, err);
+    if (err) {
         return;
     }
 
