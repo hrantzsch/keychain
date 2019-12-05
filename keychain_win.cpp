@@ -162,7 +162,7 @@ ScopedLpwstr makeTargetName(const std::string &package,
     if (!result) {
         updateError(err);
 
-        // make really sure that we set an error code of we will return nullptr
+        // make really sure that we set an error code if we will return nullptr
         if (!err) {
             err.type = keychain::ErrorType::GenericError;
             err.message = "failed to create credential target name";
