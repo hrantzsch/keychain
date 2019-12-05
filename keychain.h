@@ -102,6 +102,8 @@ enum class ErrorType {
  * to a function.
  */
 struct Error {
+    Error() : type(ErrorType::NoError) {}
+
     /*! \brief The type or reason of the error
      *
      * Note that some types of errors can only occur on certain platforms. In

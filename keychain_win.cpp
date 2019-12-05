@@ -156,9 +156,21 @@ void updateError(keychain::Error &err) {
  * The result is wrapped in a ScopedLpwstr.
  */
 ScopedLpwstr makeTargetName(const std::string &package,
-                            const std::string &service,
-                            const std::string &user) {
-    return utf8ToWideChar(package + "." + service + '/' + user);
+                            const std::string &service, const std::string &user,
+                            keychain::Error &err) {
+    auto result = utf8ToWideChar(package + "." + service + '/' + user);
+    if (!result) {
+        updateError(err);
+
+        // make really sure that we set an error code if we will return nullptr
+        if (!err) {
+            err.type = keychain::ErrorType::GenericError;
+            err.message = "Failed to create credential target name.";
+            err.code = -1; // generic non-zero
+        }
+    }
+
+    return result;
 }
 
 } // namespace
@@ -168,11 +180,8 @@ namespace keychain {
 void setPassword(const std::string &package, const std::string &service,
                  const std::string &user, const std::string &password,
                  Error &err) {
-    ::SetLastError(0); // clear thread-global error
-
-    auto target_name = makeTargetName(package, service, user);
-    if (!target_name) {
-        updateError(err);
+    auto target_name = makeTargetName(package, service, user, err);
+    if (err) {
         return;
     }
 
@@ -198,42 +207,44 @@ void setPassword(const std::string &package, const std::string &service,
     cred.CredentialBlob = (LPBYTE)(password.data());
     cred.Persist = CRED_PERSIST_ENTERPRISE;
 
-    ::CredWrite(&cred, 0);
-    updateError(err);
+    if (::CredWrite(&cred, 0) == FALSE) {
+        updateError(err);
+    }
 }
 
 std::string getPassword(const std::string &package, const std::string &service,
                         const std::string &user, Error &err) {
-    ::SetLastError(0); // clear thread-global error
     std::string password;
 
-    auto target_name = makeTargetName(package, service, user);
-    if (!target_name) {
-        updateError(err);
+    auto target_name = makeTargetName(package, service, user, err);
+    if (err) {
         return password;
     }
 
     CREDENTIAL *cred;
     bool result = ::CredRead(target_name.get(), kCredType, 0, &cred);
-    updateError(err);
 
-    if (!err && result) {
+    if (result == TRUE) {
         password = std::string(reinterpret_cast<char *>(cred->CredentialBlob),
                                cred->CredentialBlobSize);
         ::CredFree(cred);
+    } else {
+        updateError(err);
     }
+
     return password;
 }
 
 void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err) {
-    ::SetLastError(0); // clear thread-global error
-
-    auto target_name = makeTargetName(package, service, user);
-    if (target_name) {
-        ::CredDelete(target_name.get(), kCredType, 0);
+    auto target_name = makeTargetName(package, service, user, err);
+    if (err) {
+        return;
     }
-    updateError(err);
+
+    if (::CredDelete(target_name.get(), kCredType, 0) == FALSE) {
+        updateError(err);
+    }
 }
 
 } // namespace keychain
