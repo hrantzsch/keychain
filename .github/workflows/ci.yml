@@ -4,21 +4,17 @@ on: [push]
 
 jobs:
   build-linux:
-    runs-on: ubuntu-16.04  # cannot use 18.04 -- need python-gnomekeyring to create login keyring
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
 
     - name: Install dependencies
-      run: sudo apt-get install dbus-x11 dbus gnome-keyring libgnome-keyring-dev libsecret-1-dev python-gnomekeyring
+      run: sudo apt-get install dbus-x11 dbus gnome-keyring libgnome-keyring-dev libsecret-1-dev
     - name: Run cmake
       run: cmake . -DBUILD_TESTS=yes
     - name: Build and run tests
-      run: export DISPLAY=:99.0;
-           NO_AT_BRIDGE=1;
-           eval $(dbus-launch --sh-syntax);
-           eval $(echo -n "" | /usr/bin/gnome-keyring-daemon --login);
-           eval $(/usr/bin/gnome-keyring-daemon --components=secrets --start);
-           /usr/bin/python -c "import gnomekeyring;gnomekeyring.create_sync('login', '');";
+      run: export DISPLAY=:99.0 && eval $(dbus-launch --sh-syntax) &&
+           echo '$(whoami)' | gnome-keyring-daemon -r -d --unlock &&
            make test
 
   build-macos:
