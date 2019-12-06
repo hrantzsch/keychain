@@ -66,7 +66,7 @@ std::string getPassword(const std::string &package, const std::string &service,
  *
  * Existing passwords will be overwritten.
  *
- * \param package, service, user Used to identify the password to get
+ * \param package, service, user Used to identify the password to set
  * \param password The new password
  * \param err Output parameter set to indicate what error occurred, if any
  */
@@ -79,7 +79,7 @@ void setPassword(const std::string &package, const std::string &service,
  * Trying to delete a password that does not exist will result in a NotFound
  * error.
  *
- * \param package, service, user Used to identify the password to get
+ * \param package, service, user Used to identify the password to delete
  * \param err Output parameter set to indicate what error occurred, if any
  */
 void deletePassword(const std::string &package, const std::string &service,
