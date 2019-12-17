@@ -46,9 +46,13 @@ else (WIN32)  # assuming Linux
 
 endif (WIN32)
 
-add_library (${PROJECT_NAME} ${SOURCES})
-target_include_directories(${PROJECT_NAME} PRIVATE ${KEYCHAIN_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} ${KEYCHAIN_LIBRARIES})
+add_library(${PROJECT_NAME} STATIC ${SOURCES})
+set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "keychain.h")
+target_link_libraries(${PROJECT_NAME} PUBLIC ${KEYCHAIN_LIBRARIES})
+
+install(TARGETS ${PROJECT_NAME}
+        LIBRARY DESTINATION       lib
+        PUBLIC_HEADER DESTINATION include/keychain)
 
 if (BUILD_TESTS)
     add_subdirectory("test")
