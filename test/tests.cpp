@@ -96,4 +96,19 @@ TEST_CASE("Keychain", "[keychain]") {
         deletePassword("no.package", "no.service", "no.user", ec);
         CHECK(ec.type == ErrorType::NotFound);
     }
+
+    SECTION("successful function call overrides previous Error to success") {
+        Error ec{};
+        ec.type = ErrorType::GenericError;
+        setPassword(package, service, user, password, ec);
+        check_no_error(ec);
+
+        ec.type = ErrorType::GenericError;
+        getPassword(package, service, user, ec);
+        check_no_error(ec);
+
+        ec.type = ErrorType::GenericError;
+        deletePassword(package, service, user, ec);
+        check_no_error(ec);
+    }
 }

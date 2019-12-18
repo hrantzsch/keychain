@@ -83,10 +83,11 @@ namespace keychain {
 void setPassword(const std::string &package, const std::string &service,
                  const std::string &user, const std::string &password,
                  Error &err) {
+    err = Error{};
     const auto schema = makeSchema(package);
     const auto label = makeLabel(service, user);
-
     GError *error = NULL;
+
     secret_password_store_sync(&schema,
                                SECRET_COLLECTION_DEFAULT,
                                label.c_str(),
@@ -99,33 +100,36 @@ void setPassword(const std::string &package, const std::string &service,
                                user.c_str(),
                                NULL);
 
-    updateError(err, error);
+    if (error != NULL) {
+        updateError(err, error);
+    }
 }
 
 std::string getPassword(const std::string &package, const std::string &service,
                         const std::string &user, Error &err) {
+    err = Error{};
     const auto schema = makeSchema(package);
-
     GError *error = NULL;
-    gchar *raw_passwords;
-    raw_passwords = secret_password_lookup_sync(&schema,
-                                                NULL, // not cancellable
-                                                &error,
-                                                ServiceFieldName,
-                                                service.c_str(),
-                                                AccountFieldName,
-                                                user.c_str(),
-                                                NULL);
 
-    updateError(err, error);
+    gchar *raw_passwords = secret_password_lookup_sync(&schema,
+                                                       NULL, // not cancellable
+                                                       &error,
+                                                       ServiceFieldName,
+                                                       service.c_str(),
+                                                       AccountFieldName,
+                                                       user.c_str(),
+                                                       NULL);
+
     std::string password;
 
-    if (!err && raw_passwords != NULL) {
-        password = raw_passwords;
-        secret_password_free(raw_passwords);
+    if (error != NULL) {
+        updateError(err, error);
     } else if (raw_passwords == NULL) {
         // libsecret reports no error if the password was not found
         setErrorNotFound(err);
+    } else {
+        password = raw_passwords;
+        secret_password_free(raw_passwords);
     }
 
     return password;
@@ -133,6 +137,7 @@ std::string getPassword(const std::string &package, const std::string &service,
 
 void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err) {
+    err = Error{};
     const auto schema = makeSchema(package);
     GError *error = NULL;
 
@@ -145,10 +150,10 @@ void deletePassword(const std::string &package, const std::string &service,
                                               user.c_str(),
                                               NULL);
 
-    updateError(err, error);
-
-    if (!err && !deleted) {
-        // password did not exist is considered an error
+    if (error != NULL) {
+        updateError(err, error);
+    } else if (!deleted) {
+        // libsecret reports no error if the password did not exist
         setErrorNotFound(err);
     }
 }

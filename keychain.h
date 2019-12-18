@@ -41,9 +41,8 @@
  * parameter in order to correspond with conventions.
  *
  * In addition, each function expects an instance of `keychain::Error` as an
- * output parameter to indicate success or failure. Note that the error
- * parameter must not already be set to an error at the time the function is
- * called.
+ * output parameter to indicate success or failure. Note that previous states of
+ * the Error are ignored and potentially overwritten.
  *
  * Also note that all three functions are blocking (potentially indefinitely)
  * for example if the OS prompts the user to unlock their credentials storage.
@@ -55,7 +54,7 @@ struct Error;
 /*! \brief Retrieve a password
  *
  * \param package, service, user Used to identify the password to get
- * \param err Output parameter set to indicate what error occurred, if any
+ * \param err Output parameter communicating success or error details
  *
  * \return The password, if the function was successful
  */
@@ -68,7 +67,7 @@ std::string getPassword(const std::string &package, const std::string &service,
  *
  * \param package, service, user Used to identify the password to set
  * \param password The new password
- * \param err Output parameter set to indicate what error occurred, if any
+ * \param err Output parameter communicating success or error details
  */
 void setPassword(const std::string &package, const std::string &service,
                  const std::string &user, const std::string &password,
@@ -80,7 +79,7 @@ void setPassword(const std::string &package, const std::string &service,
  * error.
  *
  * \param package, service, user Used to identify the password to delete
- * \param err Output parameter set to indicate what error occurred, if any
+ * \param err Output parameter communicating success or error details
  */
 void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err);
@@ -98,8 +97,7 @@ enum class ErrorType {
 /*! \brief A struct to collect error information
  *
  * An instance of this struct is used as an output parameter to indicate success
- * or failure. Note that Errors should not already contain an error when handed
- * to a function.
+ * or failure.
  */
 struct Error {
     Error() : type(ErrorType::NoError) {}

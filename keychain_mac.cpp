@@ -144,7 +144,9 @@ namespace keychain {
 void setPassword(const std::string &package, const std::string &service,
                  const std::string &user, const std::string &password,
                  Error &err) {
+    err = Error{};
     const auto serviceName = makeServiceName(package, service);
+
     OSStatus status =
         SecKeychainAddGenericPassword(defaultUserKeychain,
                                       static_cast<UInt32>(serviceName.length()),
@@ -160,14 +162,18 @@ void setPassword(const std::string &package, const std::string &service,
         status = modifyPassword(serviceName, user, password);
     }
 
-    updateError(err, status);
+    if (status != errSecSuccess) {
+        updateError(err, status);
+    }
 }
 
 std::string getPassword(const std::string &package, const std::string &service,
                         const std::string &user, Error &err) {
+    err = Error{};
     const auto serviceName = makeServiceName(package, service);
     void *data;
     UInt32 length;
+
     OSStatus status = SecKeychainFindGenericPassword(
         defaultUserKeychain,
         static_cast<UInt32>(serviceName.length()),
@@ -180,8 +186,9 @@ std::string getPassword(const std::string &package, const std::string &service,
 
     std::string password;
 
-    updateError(err, status);
-    if (!err && data != NULL) {
+    if (status != errSecSuccess) {
+        updateError(err, status);
+    } else if (data != NULL) {
         password = std::string(reinterpret_cast<const char *>(data), length);
         SecKeychainItemFreeContent(NULL, data);
     }
@@ -191,8 +198,10 @@ std::string getPassword(const std::string &package, const std::string &service,
 
 void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err) {
+    err = Error{};
     const auto serviceName = makeServiceName(package, service);
     SecKeychainItemRef item;
+
     OSStatus status = SecKeychainFindGenericPassword(
         defaultUserKeychain,
         static_cast<UInt32>(serviceName.length()),
@@ -203,13 +212,19 @@ void deletePassword(const std::string &package, const std::string &service,
         NULL, // unused output parameter
         &item);
 
-    updateError(err, status);
-    if (!err) {
-        status = SecKeychainItemDelete(item);
+    if (status != errSecSuccess) {
         updateError(err, status);
+    } else {
+        status = SecKeychainItemDelete(item);
+        if (status != errSecSuccess) {
+            updateError(err, status);
+        }
     }
 
-    CFRelease(item);
+    if (item) {
+        CFRelease(item);
+    }
+
 }
 
 } // namespace keychain
