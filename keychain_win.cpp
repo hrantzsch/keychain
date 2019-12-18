@@ -180,6 +180,7 @@ namespace keychain {
 void setPassword(const std::string &package, const std::string &service,
                  const std::string &user, const std::string &password,
                  Error &err) {
+    err = Error{};
     auto target_name = makeTargetName(package, service, user, err);
     if (err) {
         return;
@@ -214,6 +215,7 @@ void setPassword(const std::string &package, const std::string &service,
 
 std::string getPassword(const std::string &package, const std::string &service,
                         const std::string &user, Error &err) {
+    err = Error{};
     std::string password;
 
     auto target_name = makeTargetName(package, service, user, err);
@@ -237,6 +239,7 @@ std::string getPassword(const std::string &package, const std::string &service,
 
 void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err) {
+    err = Error{};
     auto target_name = makeTargetName(package, service, user, err);
     if (err) {
         return;
