@@ -69,6 +69,8 @@ Red Hat/CentOS/Fedora: sudo yum install libsecret-devel
 Arch Linux: sudo pacman -S libsecret
 ```
 
+A Conan package is available at [reneme/conan-keychain](https://github.com/reneme/conan-keychain).
+
 ## Security Considerations and General Remarks
 
 Please read, or pretend to read, the considerations below carefully.
