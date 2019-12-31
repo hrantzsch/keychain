@@ -3,34 +3,61 @@ name: Build and test
 on: [push]
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v1
 
-    - name: Install dependencies
-      run: sudo apt-get install dbus-x11 dbus gnome-keyring libgnome-keyring-dev libsecret-1-dev
-    - name: Run cmake
-      run: cmake . -DBUILD_TESTS=yes
-    - name: Build and run tests
-      run: export DISPLAY=:99.0 && eval $(dbus-launch --sh-syntax) &&
-           echo '$(whoami)' | gnome-keyring-daemon -r -d --unlock &&
-           make test
-
-  build-macos:
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v1
-    - name: Run cmake
-      run: cmake . -DBUILD_TESTS=yes
-    - name: Build and run tests
-      run: make test
-
-  build-windows:
+  Windows-test:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        config: [Debug, Release]
     steps:
-    - uses: actions/checkout@v1
-    - name: Run cmake
-      run: cmake -G "Visual Studio 16" . -DBUILD_TESTS=yes
-    - name: Build and run tests
-      run: cmake --build . --target test --config Release
+      - uses: actions/checkout@v2
+      - name: Run cmake
+        run: cmake -G "Visual Studio 16" . -DBUILD_TESTS=yes -DCODE_COVERAGE=no
+      - name: Build and run tests
+        run: cmake --build . --target test --config ${{ matrix.config }}
+
+  Unix-test-and-cover:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        config: [Debug, Release, Coverage]
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get install dbus-x11 dbus gnome-keyring libgnome-keyring-dev libsecret-1-dev gcovr
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            pip3 install gcovr
+          fi
+
+      - name: "CMake: configure coverage"
+        if: matrix.config == 'Coverage'
+        run: cmake . -DBUILD_TESTS=yes -DCODE_COVERAGE=yes -DCMAKE_BUILD_TYPE=Debug
+      - name: "CMake: configure test"
+        if: matrix.config != 'Coverage'
+        run: cmake . -DBUILD_TESTS=yes -DCODE_COVERAGE=no -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+
+      - name: Build and run tests
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            export DISPLAY=:99.0
+            eval $(dbus-launch --sh-syntax)
+            echo '$(whoami)' | gnome-keyring-daemon -r -d --unlock
+          fi
+          cmake --build . --target test
+
+      - name: Generate gcovr report
+        if: matrix.config == 'Coverage'
+        run: gcovr -r . -f "keychain.*" -x -o coverage.xml
+      - name: Upload coverage to Codecov
+        if: matrix.config == 'Coverage'
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true

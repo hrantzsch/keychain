@@ -1,6 +1,7 @@
 # Keychain
 
 ![CI Badge](https://github.com/hrantzsch/keychain/workflows/Build%20and%20test/badge.svg)
+[![codecov](https://codecov.io/gh/hrantzsch/keychain/branch/master/graph/badge.svg)](https://codecov.io/gh/hrantzsch/keychain)
 
 Keychain is a thin cross-platform wrapper to access the operating system's credential storage in C++.
 Keychain supports getting, adding/replacing, and deleting passwords on macOS, Linux, and Windows.

@@ -12,7 +12,7 @@ else (MSVC)
 endif (MSVC)
 
 # enable compiler warnings
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_COMPILER_IS_GNUCC)
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror -Wall -Wextra -pedantic")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W2 /WX")
@@ -50,6 +50,16 @@ add_library(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${KEYCHAIN_INCLUDE_DIRS})
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "keychain.h")
 target_link_libraries(${PROJECT_NAME} PUBLIC ${KEYCHAIN_LIBRARIES})
+
+# Code Coverage Configuration
+option(CODE_COVERAGE "Enable coverage reporting" OFF)
+if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(COVERAGE_COMPILE_FLAGS "--coverage -g -O0")
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${COVERAGE_COMPILE_FLAGS}")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} \"--coverage\"")
+    endif()
+endif()
 
 install(TARGETS ${PROJECT_NAME}
         LIBRARY DESTINATION       lib
