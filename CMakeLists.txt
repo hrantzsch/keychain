@@ -61,6 +61,16 @@ if(CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     endif()
 endif()
 
+option(FUZZING "Enable fuzzing" OFF)
+if(FUZZING)
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR "fuzzing requires clang")
+    endif()
+    set(FUZZING_COMPILE_FLAGS "-g -fsanitize=fuzzer")
+    set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} ${FUZZING_COMPILE_FLAGS}")
+endif()
+
+
 install(TARGETS ${PROJECT_NAME}
         LIBRARY DESTINATION       lib
         ARCHIVE DESTINATION       lib
@@ -69,3 +79,7 @@ install(TARGETS ${PROJECT_NAME}
 if (BUILD_TESTS)
     add_subdirectory("test")
 endif (BUILD_TESTS)
+
+if (FUZZING)
+    add_subdirectory("fuzzing")
+endif(FUZZING)
