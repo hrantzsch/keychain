@@ -1,5 +1,5 @@
 #include "catch.hpp"
-#include "keychain.h"
+#include "keychain/keychain.h"
 
 using namespace keychain;
 
