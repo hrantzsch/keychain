@@ -1,6 +1,10 @@
 name: Build and test
 
-on: [push]
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
 jobs:
 
@@ -51,7 +55,7 @@ jobs:
 
       - name: Generate gcovr report
         if: matrix.config == 'Coverage'
-        run: gcovr -r . -f "keychain.*" -x -o coverage.xml
+        run: gcovr -r . -f "src/*" -f "include/*" -x -o coverage.xml
       - name: Upload coverage to Codecov
         if: matrix.config == 'Coverage'
         uses: codecov/codecov-action@v1
