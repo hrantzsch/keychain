@@ -1,0 +1,2 @@
+# this requirements file is used for github actions
+conan
