@@ -54,23 +54,29 @@ int main() {
 }
 ```
 
-## Building
+## Installation
+
+### Via Conan
+
+Keychain is available in the [ConanCenter](https://conan.io/center/keychain) package repository.
+If you're using Conan, simply add the desired version to your requirements.
+
+### Building It Manually
 
 After cloning the repository:
-```bash
-mkdir build && cd build
-cmake .. -DBUILD_TESTS=yes
-make && make test
+```
+$ mkdir _build
+$ cmake . -DBUILD_TESTS=yes -B _build
+$ cmake --build _build --target test
+# cmake --install _build
 ```
 
 On Linux, Keychain depends on `libsecret`:
 ```
 Debian/Ubuntu: sudo apt-get install libsecret-1-dev
 Red Hat/CentOS/Fedora: sudo yum install libsecret-devel
-Arch Linux: sudo pacman -S libsecret
+Arch Linux: sudo pacman -Sy libsecret
 ```
-
-A Conan package is available at [reneme/conan-keychain](https://github.com/reneme/conan-keychain).
 
 ## Security Considerations and General Remarks
 
