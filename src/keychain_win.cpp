@@ -33,7 +33,7 @@
 
 #include <windows.h>
 #include <wincred.h>
-#include <intsafe.h> // for DWORD_MAX
+#define DWORD_MAX 0xffffffffUL
 // clang-format on
 
 namespace {
@@ -200,7 +200,7 @@ void setPassword(const std::string &package, const std::string &service,
         return;
     }
 
-    CREDENTIAL cred = {0};
+    CREDENTIAL cred = {};
     cred.Type = kCredType;
     cred.TargetName = target_name.get();
     cred.UserName = user_name.get();
