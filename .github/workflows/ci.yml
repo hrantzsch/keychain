@@ -47,9 +47,8 @@ jobs:
       - name: Build and run tests
         run: |
           if [ "$RUNNER_OS" == "Linux" ]; then
-            export DISPLAY=:99.0
-            eval $(dbus-launch --sh-syntax)
-            echo '$(whoami)' | gnome-keyring-daemon -r -d --unlock
+            eval $(DISPLAY=:99.0 dbus-launch --sh-syntax)
+            echo "somepassword" | gnome-keyring-daemon -r -d --unlock
           fi
           cmake --build . --target test
 
