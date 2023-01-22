@@ -45,6 +45,12 @@ elseif (APPLE)
         PRIVATE
             "src/keychain_mac.cpp")
 
+    # We're using the deprecated "Legacy Password Storage" API
+    # (SecKeychainFindGenericPassword and friends)
+    target_compile_options(${PROJECT_NAME}
+        PRIVATE
+            "-Wno-error=deprecated-declarations")
+
     find_library(COREFOUNDATION_LIBRARY CoreFoundation REQUIRED)
     find_library(SECURITY_LIBRARY Security REQUIRED)
 
