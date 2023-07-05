@@ -30,9 +30,6 @@
 #include "keychain.h"
 
 namespace {
-
-const SecKeychainRef defaultUserKeychain = NULL; // NULL means 'default'
-
 /*! \brief Converts a CFString to a std::string
  *
  * This either uses CFStringGetCStringPtr or (if that fails) CFStringGetCString.
@@ -111,28 +108,25 @@ void updateError(keychain::Error &err, OSStatus status) {
  */
 OSStatus modifyPassword(const std::string &serviceName, const std::string &user,
                         const std::string &password) {
-    SecKeychainItemRef item = NULL;
-    OSStatus status = SecKeychainFindGenericPassword(
-        defaultUserKeychain,
-        static_cast<UInt32>(serviceName.length()),
-        serviceName.data(),
-        static_cast<UInt32>(user.length()),
-        user.data(),
-        NULL, // unused output parameter
-        NULL, // unused output parameter
-        &item);
+    CFStringRef cfServiceName = CFStringCreateWithCString(NULL, serviceName.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfUser = CFStringCreateWithCString(NULL, user.c_str(), kCFStringEncodingUTF8);
 
-    if (status == errSecSuccess) {
-        status =
-            SecKeychainItemModifyContent(item,
-                                         NULL,
-                                         static_cast<UInt32>(password.length()),
-                                         password.data());
-    }
+    CFMutableDictionaryRef query = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
+    CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
+    CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
 
-    if (item) {
-        CFRelease(item);
-    }
+    CFDataRef cfPassword = CFDataCreate(NULL, (const UInt8 *)password.c_str(), password.length());
+    CFMutableDictionaryRef attributesToUpdate = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFDictionaryAddValue(attributesToUpdate, kSecValueData, cfPassword);
+
+    OSStatus status = SecItemUpdate(query, attributesToUpdate);
+
+    CFRelease(cfServiceName);
+    CFRelease(cfUser);
+    CFRelease(cfPassword);
+    CFRelease(query);
+    CFRelease(attributesToUpdate);
 
     return status;
 }
@@ -147,15 +141,18 @@ void setPassword(const std::string &package, const std::string &service,
     err = Error{};
     const auto serviceName = makeServiceName(package, service);
 
-    OSStatus status =
-        SecKeychainAddGenericPassword(defaultUserKeychain,
-                                      static_cast<UInt32>(serviceName.length()),
-                                      serviceName.data(),
-                                      static_cast<UInt32>(user.length()),
-                                      user.data(),
-                                      static_cast<UInt32>(password.length()),
-                                      password.data(),
-                                      NULL /* unused output parameter */);
+    CFStringRef cfServiceName = CFStringCreateWithCString(NULL, serviceName.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfUser = CFStringCreateWithCString(NULL, user.c_str(), kCFStringEncodingUTF8);
+
+    CFMutableDictionaryRef query = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
+    CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
+    CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
+
+    CFDataRef cfPassword = CFDataCreate(NULL, (const UInt8 *)password.c_str(), password.length());
+    CFDictionaryAddValue(query, kSecValueData, cfPassword);
+
+    OSStatus status = SecItemAdd(query, NULL);
 
     if (status == errSecDuplicateItem) {
         // password exists -- override
@@ -165,33 +162,43 @@ void setPassword(const std::string &package, const std::string &service,
     if (status != errSecSuccess) {
         updateError(err, status);
     }
+
+    CFRelease(cfServiceName);
+    CFRelease(cfUser);
+    CFRelease(cfPassword);
+    CFRelease(query);
 }
 
 std::string getPassword(const std::string &package, const std::string &service,
                         const std::string &user, Error &err) {
     err = Error{};
     const auto serviceName = makeServiceName(package, service);
-    void *data;
-    UInt32 length;
 
-    OSStatus status = SecKeychainFindGenericPassword(
-        defaultUserKeychain,
-        static_cast<UInt32>(serviceName.length()),
-        serviceName.data(),
-        static_cast<UInt32>(user.length()),
-        user.data(),
-        &length,
-        &data,
-        NULL /* unused output parameter */);
+    CFStringRef cfServiceName = CFStringCreateWithCString(NULL, serviceName.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfUser = CFStringCreateWithCString(NULL, user.c_str(), kCFStringEncodingUTF8);
+
+    CFMutableDictionaryRef query = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
+    CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
+    CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
+    CFDictionaryAddValue(query, kSecReturnData, kCFBooleanTrue);
+
+    CFTypeRef result = NULL;
+    OSStatus status = SecItemCopyMatching(query, &result);
 
     std::string password;
 
     if (status != errSecSuccess) {
         updateError(err, status);
-    } else if (data != NULL) {
-        password = std::string(reinterpret_cast<const char *>(data), length);
-        SecKeychainItemFreeContent(NULL, data);
+    } else if (result != NULL) {
+        CFDataRef cfPassword = (CFDataRef)result;
+        password = std::string(reinterpret_cast<const char *>(CFDataGetBytePtr(cfPassword)), CFDataGetLength(cfPassword));
+        CFRelease(result);
     }
+
+    CFRelease(cfServiceName);
+    CFRelease(cfUser);
+    CFRelease(query);
 
     return password;
 }
@@ -200,30 +207,24 @@ void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err) {
     err = Error{};
     const auto serviceName = makeServiceName(package, service);
-    SecKeychainItemRef item;
 
-    OSStatus status = SecKeychainFindGenericPassword(
-        defaultUserKeychain,
-        static_cast<UInt32>(serviceName.length()),
-        serviceName.data(),
-        static_cast<UInt32>(user.length()),
-        user.data(),
-        NULL, // unused output parameter
-        NULL, // unused output parameter
-        &item);
+    CFStringRef cfServiceName = CFStringCreateWithCString(NULL, serviceName.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfUser = CFStringCreateWithCString(NULL, user.c_str(), kCFStringEncodingUTF8);
+
+    CFMutableDictionaryRef query = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
+    CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
+    CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
+
+    OSStatus status = SecItemDelete(query);
 
     if (status != errSecSuccess) {
         updateError(err, status);
-    } else {
-        status = SecKeychainItemDelete(item);
-        if (status != errSecSuccess) {
-            updateError(err, status);
-        }
     }
 
-    if (!err && item) {
-        CFRelease(item);
-    }
+    CFRelease(cfServiceName);
+    CFRelease(cfUser);
+    CFRelease(query);
 }
 
 } // namespace keychain
