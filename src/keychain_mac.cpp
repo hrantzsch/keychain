@@ -224,7 +224,6 @@ void deletePassword(const std::string &package, const std::string &service,
     if (!err && item) {
         CFRelease(item);
     }
-
 }
 
 } // namespace keychain
