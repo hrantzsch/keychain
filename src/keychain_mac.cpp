@@ -116,7 +116,7 @@ OSStatus modifyPassword(const std::string &serviceName, const std::string &user,
     CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
     CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
 
-    CFDataRef cfPassword = CFDataCreate(NULL, (const UInt8 *)password.c_str(), password.length());
+    CFDataRef cfPassword = CFDataCreate(NULL, reinterpret_cast<const UInt8 *>(password.c_str()), password.length());
     CFMutableDictionaryRef attributesToUpdate = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     CFDictionaryAddValue(attributesToUpdate, kSecValueData, cfPassword);
 
@@ -149,7 +149,7 @@ void setPassword(const std::string &package, const std::string &service,
     CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
     CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
 
-    CFDataRef cfPassword = CFDataCreate(NULL, (const UInt8 *)password.c_str(), password.length());
+    CFDataRef cfPassword = CFDataCreate(NULL, reinterpret_cast<const UInt8 *>(password.c_str()), password.length());
     CFDictionaryAddValue(query, kSecValueData, cfPassword);
 
     OSStatus status = SecItemAdd(query, NULL);
