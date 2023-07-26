@@ -101,34 +101,34 @@ void updateError(keychain::Error &err, OSStatus status) {
     }
 }
 
-/*! \brief Modify an existing password
- *
- * Helper function that tries to find an existing password in the keychain and
- * modifies it.
- */
-OSStatus modifyPassword(const std::string &serviceName, const std::string &user,
-                        const std::string &password) {
-    CFStringRef cfServiceName = CFStringCreateWithCString(kCFAllocatorDefault, serviceName.c_str(), kCFStringEncodingUTF8);
-    CFStringRef cfUser = CFStringCreateWithCString(kCFAllocatorDefault, user.c_str(), kCFStringEncodingUTF8);
+void handleCFCreateFailure(keychain::Error &err, const std::string &errorMessage) {
+    err.message = errorMessage;
+    err.type = keychain::ErrorType::GenericError;
+    err.code = -1;
+}
 
-    CFMutableDictionaryRef query = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-    CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
-    CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
-    CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
+CFStringRef createCFStringWithCString(const std::string &str, keychain::Error &err) {
+    CFStringRef result = CFStringCreateWithCString(kCFAllocatorDefault, str.c_str(), kCFStringEncodingUTF8);
+    if (result == NULL) {
+        handleCFCreateFailure(err, "Failed to create CFString");
+    }
+    return result;
+}
 
-    CFDataRef cfPassword = CFDataCreate(kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(password.c_str()), password.length());
-    CFMutableDictionaryRef attributesToUpdate = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-    CFDictionaryAddValue(attributesToUpdate, kSecValueData, cfPassword);
+CFMutableDictionaryRef createCFMutableDictionary(keychain::Error &err) {
+    CFMutableDictionaryRef result = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    if (result == NULL) {
+        handleCFCreateFailure(err, "Failed to create CFMutableDictionary");
+    }
+    return result;
+}
 
-    OSStatus status = SecItemUpdate(query, attributesToUpdate);
-
-    CFRelease(cfServiceName);
-    CFRelease(cfUser);
-    CFRelease(cfPassword);
-    CFRelease(query);
-    CFRelease(attributesToUpdate);
-
-    return status;
+CFDataRef createCFData(const std::string &data, keychain::Error &err) {
+    CFDataRef result = CFDataCreate(kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(data.c_str()), data.length());
+    if (result == NULL) {
+        handleCFCreateFailure(err, "Failed to create CFData");
+    }
+    return result;
 }
 
 } // namespace
@@ -141,22 +141,37 @@ void setPassword(const std::string &package, const std::string &service,
     err = Error{};
     const auto serviceName = makeServiceName(package, service);
 
-    CFStringRef cfServiceName = CFStringCreateWithCString(kCFAllocatorDefault, serviceName.c_str(), kCFStringEncodingUTF8);
-    CFStringRef cfUser = CFStringCreateWithCString(kCFAllocatorDefault, user.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfServiceName = createCFStringWithCString(serviceName, err);
+    CFStringRef cfUser = createCFStringWithCString(user, err);
+    CFDataRef cfPassword = createCFData(password, err);
+    CFMutableDictionaryRef query = createCFMutableDictionary(err);
 
-    CFMutableDictionaryRef query = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    if (err.type != keychain::ErrorType::NoError) {
+        return;
+    }
+
     CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
     CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
     CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
-
-    CFDataRef cfPassword = CFDataCreate(kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(password.c_str()), password.length());
     CFDictionaryAddValue(query, kSecValueData, cfPassword);
 
     OSStatus status = SecItemAdd(query, NULL);
 
     if (status == errSecDuplicateItem) {
         // password exists -- override
-        status = modifyPassword(serviceName, user, password);
+        CFMutableDictionaryRef attributesToUpdate = createCFMutableDictionary(err);
+        if (err.type != keychain::ErrorType::NoError) {
+            CFRelease(cfServiceName);
+            CFRelease(cfUser);
+            CFRelease(cfPassword);
+            CFRelease(query);
+            return;
+        }
+
+        CFDictionaryAddValue(attributesToUpdate, kSecValueData, cfPassword);
+        status = SecItemUpdate(query, attributesToUpdate);
+
+        CFRelease(attributesToUpdate);
     }
 
     if (status != errSecSuccess) {
@@ -172,12 +187,17 @@ void setPassword(const std::string &package, const std::string &service,
 std::string getPassword(const std::string &package, const std::string &service,
                         const std::string &user, Error &err) {
     err = Error{};
+    std::string password;
     const auto serviceName = makeServiceName(package, service);
 
-    CFStringRef cfServiceName = CFStringCreateWithCString(kCFAllocatorDefault, serviceName.c_str(), kCFStringEncodingUTF8);
-    CFStringRef cfUser = CFStringCreateWithCString(kCFAllocatorDefault, user.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfServiceName = createCFStringWithCString(serviceName, err);
+    CFStringRef cfUser = createCFStringWithCString(user, err);
+    CFMutableDictionaryRef query = createCFMutableDictionary(err);
 
-    CFMutableDictionaryRef query = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    if (err.type != keychain::ErrorType::NoError) {
+        return password;
+    }
+
     CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
     CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
     CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
@@ -185,8 +205,6 @@ std::string getPassword(const std::string &package, const std::string &service,
 
     CFTypeRef result = NULL;
     OSStatus status = SecItemCopyMatching(query, &result);
-
-    std::string password;
 
     if (status != errSecSuccess) {
         updateError(err, status);
@@ -208,10 +226,14 @@ void deletePassword(const std::string &package, const std::string &service,
     err = Error{};
     const auto serviceName = makeServiceName(package, service);
 
-    CFStringRef cfServiceName = CFStringCreateWithCString(kCFAllocatorDefault, serviceName.c_str(), kCFStringEncodingUTF8);
-    CFStringRef cfUser = CFStringCreateWithCString(kCFAllocatorDefault, user.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfServiceName = createCFStringWithCString(serviceName, err);
+    CFStringRef cfUser = createCFStringWithCString(user, err);
+    CFMutableDictionaryRef query = createCFMutableDictionary(err);
 
-    CFMutableDictionaryRef query = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    if (err.type != keychain::ErrorType::NoError) {
+        return;
+    }
+
     CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
     CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
     CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
