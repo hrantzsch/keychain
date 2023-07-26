@@ -108,16 +108,16 @@ void updateError(keychain::Error &err, OSStatus status) {
  */
 OSStatus modifyPassword(const std::string &serviceName, const std::string &user,
                         const std::string &password) {
-    CFStringRef cfServiceName = CFStringCreateWithCString(NULL, serviceName.c_str(), kCFStringEncodingUTF8);
-    CFStringRef cfUser = CFStringCreateWithCString(NULL, user.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfServiceName = CFStringCreateWithCString(kCFAllocatorDefault, serviceName.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfUser = CFStringCreateWithCString(kCFAllocatorDefault, user.c_str(), kCFStringEncodingUTF8);
 
-    CFMutableDictionaryRef query = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFMutableDictionaryRef query = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
     CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
     CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
 
-    CFDataRef cfPassword = CFDataCreate(NULL, reinterpret_cast<const UInt8 *>(password.c_str()), password.length());
-    CFMutableDictionaryRef attributesToUpdate = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFDataRef cfPassword = CFDataCreate(kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(password.c_str()), password.length());
+    CFMutableDictionaryRef attributesToUpdate = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     CFDictionaryAddValue(attributesToUpdate, kSecValueData, cfPassword);
 
     OSStatus status = SecItemUpdate(query, attributesToUpdate);
@@ -141,15 +141,15 @@ void setPassword(const std::string &package, const std::string &service,
     err = Error{};
     const auto serviceName = makeServiceName(package, service);
 
-    CFStringRef cfServiceName = CFStringCreateWithCString(NULL, serviceName.c_str(), kCFStringEncodingUTF8);
-    CFStringRef cfUser = CFStringCreateWithCString(NULL, user.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfServiceName = CFStringCreateWithCString(kCFAllocatorDefault, serviceName.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfUser = CFStringCreateWithCString(kCFAllocatorDefault, user.c_str(), kCFStringEncodingUTF8);
 
-    CFMutableDictionaryRef query = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFMutableDictionaryRef query = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
     CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
     CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
 
-    CFDataRef cfPassword = CFDataCreate(NULL, reinterpret_cast<const UInt8 *>(password.c_str()), password.length());
+    CFDataRef cfPassword = CFDataCreate(kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(password.c_str()), password.length());
     CFDictionaryAddValue(query, kSecValueData, cfPassword);
 
     OSStatus status = SecItemAdd(query, NULL);
@@ -174,10 +174,10 @@ std::string getPassword(const std::string &package, const std::string &service,
     err = Error{};
     const auto serviceName = makeServiceName(package, service);
 
-    CFStringRef cfServiceName = CFStringCreateWithCString(NULL, serviceName.c_str(), kCFStringEncodingUTF8);
-    CFStringRef cfUser = CFStringCreateWithCString(NULL, user.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfServiceName = CFStringCreateWithCString(kCFAllocatorDefault, serviceName.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfUser = CFStringCreateWithCString(kCFAllocatorDefault, user.c_str(), kCFStringEncodingUTF8);
 
-    CFMutableDictionaryRef query = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFMutableDictionaryRef query = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
     CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
     CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
@@ -208,10 +208,10 @@ void deletePassword(const std::string &package, const std::string &service,
     err = Error{};
     const auto serviceName = makeServiceName(package, service);
 
-    CFStringRef cfServiceName = CFStringCreateWithCString(NULL, serviceName.c_str(), kCFStringEncodingUTF8);
-    CFStringRef cfUser = CFStringCreateWithCString(NULL, user.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfServiceName = CFStringCreateWithCString(kCFAllocatorDefault, serviceName.c_str(), kCFStringEncodingUTF8);
+    CFStringRef cfUser = CFStringCreateWithCString(kCFAllocatorDefault, user.c_str(), kCFStringEncodingUTF8);
 
-    CFMutableDictionaryRef query = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFMutableDictionaryRef query = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
     CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
     CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
