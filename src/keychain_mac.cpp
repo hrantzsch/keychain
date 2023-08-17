@@ -101,14 +101,17 @@ void updateError(keychain::Error &err, OSStatus status) {
     }
 }
 
-void handleCFCreateFailure(keychain::Error &err, const std::string &errorMessage) {
+void handleCFCreateFailure(keychain::Error &err,
+                           const std::string &errorMessage) {
     err.message = errorMessage;
     err.type = keychain::ErrorType::GenericError;
     err.code = -1;
 }
 
-CFStringRef createCFStringWithCString(const std::string &str, keychain::Error &err) {
-    CFStringRef result = CFStringCreateWithCString(kCFAllocatorDefault, str.c_str(), kCFStringEncodingUTF8);
+CFStringRef createCFStringWithCString(const std::string &str,
+                                      keychain::Error &err) {
+    CFStringRef result = CFStringCreateWithCString(
+        kCFAllocatorDefault, str.c_str(), kCFStringEncodingUTF8);
     if (result == NULL) {
         handleCFCreateFailure(err, "Failed to create CFString");
     }
@@ -116,7 +119,11 @@ CFStringRef createCFStringWithCString(const std::string &str, keychain::Error &e
 }
 
 CFMutableDictionaryRef createCFMutableDictionary(keychain::Error &err) {
-    CFMutableDictionaryRef result = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFMutableDictionaryRef result =
+        CFDictionaryCreateMutable(kCFAllocatorDefault,
+                                  0,
+                                  &kCFTypeDictionaryKeyCallBacks,
+                                  &kCFTypeDictionaryValueCallBacks);
     if (result == NULL) {
         handleCFCreateFailure(err, "Failed to create CFMutableDictionary");
     }
@@ -124,21 +131,28 @@ CFMutableDictionaryRef createCFMutableDictionary(keychain::Error &err) {
 }
 
 CFDataRef createCFData(const std::string &data, keychain::Error &err) {
-    CFDataRef result = CFDataCreate(kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(data.c_str()), data.length());
+    CFDataRef result =
+        CFDataCreate(kCFAllocatorDefault,
+                     reinterpret_cast<const UInt8 *>(data.c_str()),
+                     data.length());
     if (result == NULL) {
         handleCFCreateFailure(err, "Failed to create CFData");
     }
     return result;
 }
 
-CFMutableDictionaryRef createQuery(const std::string &serviceName, const std::string &user, keychain::Error &err) {
+CFMutableDictionaryRef createQuery(const std::string &serviceName,
+                                   const std::string &user,
+                                   keychain::Error &err) {
     CFStringRef cfServiceName = createCFStringWithCString(serviceName, err);
     CFStringRef cfUser = createCFStringWithCString(user, err);
     CFMutableDictionaryRef query = createCFMutableDictionary(err);
 
     if (err.type != keychain::ErrorType::NoError) {
-        if (cfServiceName) CFRelease(cfServiceName);
-        if (cfUser) CFRelease(cfUser);
+        if (cfServiceName)
+            CFRelease(cfServiceName);
+        if (cfUser)
+            CFRelease(cfUser);
         return NULL;
     }
 
@@ -174,7 +188,8 @@ void setPassword(const std::string &package, const std::string &service,
 
     if (status == errSecDuplicateItem) {
         // password exists -- override
-        CFMutableDictionaryRef attributesToUpdate = createCFMutableDictionary(err);
+        CFMutableDictionaryRef attributesToUpdate =
+            createCFMutableDictionary(err);
         if (err.type != keychain::ErrorType::NoError) {
             CFRelease(cfPassword);
             CFRelease(query);
@@ -215,7 +230,9 @@ std::string getPassword(const std::string &package, const std::string &service,
         updateError(err, status);
     } else if (result != NULL) {
         CFDataRef cfPassword = (CFDataRef)result;
-        password = std::string(reinterpret_cast<const char *>(CFDataGetBytePtr(cfPassword)), CFDataGetLength(cfPassword));
+        password = std::string(
+            reinterpret_cast<const char *>(CFDataGetBytePtr(cfPassword)),
+            CFDataGetLength(cfPassword));
         CFRelease(result);
     }
 
