@@ -30,6 +30,7 @@
 #include "keychain.h"
 
 namespace {
+
 /*! \brief Converts a CFString to a std::string
  *
  * This either uses CFStringGetCStringPtr or (if that fails) CFStringGetCString.
@@ -101,67 +102,80 @@ void updateError(keychain::Error &err, OSStatus status) {
     }
 }
 
-void handleCFCreateFailure(keychain::Error &err,
-                           const std::string &errorMessage) {
+void setGenericError(keychain::Error &err, const std::string &errorMessage) {
+    err = keychain::Error{};
     err.message = errorMessage;
     err.type = keychain::ErrorType::GenericError;
     err.code = -1;
 }
 
-CFStringRef createCFStringWithCString(const std::string &str,
-                                      keychain::Error &err) {
-    CFStringRef result = CFStringCreateWithCString(
-        kCFAllocatorDefault, str.c_str(), kCFStringEncodingUTF8);
-    if (result == NULL) {
-        handleCFCreateFailure(err, "Failed to create CFString");
+/*! \brief Helper to manage the lifetime of CFObjects */
+template <typename T> struct ScopedCFRef {
+  public:
+    explicit ScopedCFRef(T &&ref) : _ref(std::move(ref)) {}
+    ~ScopedCFRef() {
+        if (_ref)
+            CFRelease(_ref);
     }
+
+    ScopedCFRef(ScopedCFRef &&) noexcept = default;
+    ScopedCFRef(const ScopedCFRef &) = delete;
+    ScopedCFRef &operator=(const ScopedCFRef &) = delete;
+    ScopedCFRef &operator=(ScopedCFRef &&) = delete;
+
+    const T &getCFRef() const { return _ref; }
+    operator bool() const { return _ref != nullptr; }
+
+  private:
+    T _ref;
+};
+
+ScopedCFRef<CFStringRef> createCFStringWithCString(const std::string &str,
+                                                   keychain::Error &err) {
+    auto result = ScopedCFRef<CFStringRef>(CFStringCreateWithCString(
+        kCFAllocatorDefault, str.c_str(), kCFStringEncodingUTF8));
+    if (!result)
+        setGenericError(err, "Failed to create CFString");
     return result;
 }
 
-CFMutableDictionaryRef createCFMutableDictionary(keychain::Error &err) {
-    CFMutableDictionaryRef result =
+ScopedCFRef<CFMutableDictionaryRef>
+createCFMutableDictionary(keychain::Error &err) {
+    auto result = ScopedCFRef<CFMutableDictionaryRef>(
         CFDictionaryCreateMutable(kCFAllocatorDefault,
                                   0,
                                   &kCFTypeDictionaryKeyCallBacks,
-                                  &kCFTypeDictionaryValueCallBacks);
-    if (result == NULL) {
-        handleCFCreateFailure(err, "Failed to create CFMutableDictionary");
-    }
+                                  &kCFTypeDictionaryValueCallBacks));
+    if (!result)
+        setGenericError(err, "Failed to create CFMutableDictionary");
     return result;
 }
 
-CFDataRef createCFData(const std::string &data, keychain::Error &err) {
-    CFDataRef result =
+ScopedCFRef<CFDataRef> createCFData(const std::string &data,
+                                    keychain::Error &err) {
+    auto result = ScopedCFRef<CFDataRef>(
         CFDataCreate(kCFAllocatorDefault,
                      reinterpret_cast<const UInt8 *>(data.c_str()),
-                     data.length());
-    if (result == NULL) {
-        handleCFCreateFailure(err, "Failed to create CFData");
-    }
+                     data.length()));
+    if (!result)
+        setGenericError(err, "Failed to create CFData");
     return result;
 }
 
-CFMutableDictionaryRef createQuery(const std::string &serviceName,
-                                   const std::string &user,
-                                   keychain::Error &err) {
-    CFStringRef cfServiceName = createCFStringWithCString(serviceName, err);
-    CFStringRef cfUser = createCFStringWithCString(user, err);
-    CFMutableDictionaryRef query = createCFMutableDictionary(err);
+ScopedCFRef<CFMutableDictionaryRef> createQuery(const std::string &serviceName,
+                                                const std::string &user,
+                                                keychain::Error &err) {
+    const auto cfServiceName = createCFStringWithCString(serviceName, err);
+    const auto cfUser = createCFStringWithCString(user, err);
+    auto query = createCFMutableDictionary(err);
 
-    if (err.type != keychain::ErrorType::NoError) {
-        if (cfServiceName)
-            CFRelease(cfServiceName);
-        if (cfUser)
-            CFRelease(cfUser);
-        return NULL;
-    }
+    if (err.type != keychain::ErrorType::NoError)
+        return query;
 
-    CFDictionaryAddValue(query, kSecClass, kSecClassGenericPassword);
-    CFDictionaryAddValue(query, kSecAttrAccount, cfUser);
-    CFDictionaryAddValue(query, kSecAttrService, cfServiceName);
-
-    CFRelease(cfServiceName);
-    CFRelease(cfUser);
+    CFDictionaryAddValue(query.getCFRef(), kSecClass, kSecClassGenericPassword);
+    CFDictionaryAddValue(query.getCFRef(), kSecAttrAccount, cfUser.getCFRef());
+    CFDictionaryAddValue(
+        query.getCFRef(), kSecAttrService, cfServiceName.getCFRef());
 
     return query;
 }
@@ -175,89 +189,64 @@ void setPassword(const std::string &package, const std::string &service,
                  Error &err) {
     err = Error{};
     const auto serviceName = makeServiceName(package, service);
-    CFDataRef cfPassword = createCFData(password, err);
-    CFMutableDictionaryRef query = createQuery(serviceName, user, err);
+    const auto cfPassword = createCFData(password, err);
+    auto query = createQuery(serviceName, user, err);
 
-    if (err.type != keychain::ErrorType::NoError) {
+    if (err.type != keychain::ErrorType::NoError)
         return;
-    }
 
-    CFDictionaryAddValue(query, kSecValueData, cfPassword);
-
-    OSStatus status = SecItemAdd(query, NULL);
+    CFDictionaryAddValue(
+        query.getCFRef(), kSecValueData, cfPassword.getCFRef());
+    OSStatus status = SecItemAdd(query.getCFRef(), NULL);
 
     if (status == errSecDuplicateItem) {
         // password exists -- override
-        CFMutableDictionaryRef attributesToUpdate =
-            createCFMutableDictionary(err);
-        if (err.type != keychain::ErrorType::NoError) {
-            CFRelease(cfPassword);
-            CFRelease(query);
+        auto attributesToUpdate = createCFMutableDictionary(err);
+        if (err.type != keychain::ErrorType::NoError)
             return;
-        }
 
-        CFDictionaryAddValue(attributesToUpdate, kSecValueData, cfPassword);
-        status = SecItemUpdate(query, attributesToUpdate);
-
-        CFRelease(attributesToUpdate);
+        CFDictionaryAddValue(attributesToUpdate.getCFRef(),
+                             kSecValueData,
+                             cfPassword.getCFRef());
+        status = SecItemUpdate(query.getCFRef(), attributesToUpdate.getCFRef());
     }
 
-    if (status != errSecSuccess) {
-        updateError(err, status);
-    }
-
-    CFRelease(cfPassword);
-    CFRelease(query);
+    updateError(err, status);
 }
 
 std::string getPassword(const std::string &package, const std::string &service,
                         const std::string &user, Error &err) {
     err = Error{};
-    std::string password;
     const auto serviceName = makeServiceName(package, service);
-    CFMutableDictionaryRef query = createQuery(serviceName, user, err);
+    auto query = createQuery(serviceName, user, err);
 
-    if (err.type != keychain::ErrorType::NoError) {
-        return password;
-    }
+    if (err.type != keychain::ErrorType::NoError)
+        return "";
 
-    CFDictionaryAddValue(query, kSecReturnData, kCFBooleanTrue);
+    CFDictionaryAddValue(query.getCFRef(), kSecReturnData, kCFBooleanTrue);
 
-    CFTypeRef result = NULL;
-    OSStatus status = SecItemCopyMatching(query, &result);
+    CFTypeRef result = nullptr;
+    updateError(err, SecItemCopyMatching(query.getCFRef(), &result));
+    const auto cfPassword = ScopedCFRef<CFDataRef>((CFDataRef)result);
 
-    if (status != errSecSuccess) {
-        updateError(err, status);
-    } else if (result != NULL) {
-        CFDataRef cfPassword = (CFDataRef)result;
-        password = std::string(
-            reinterpret_cast<const char *>(CFDataGetBytePtr(cfPassword)),
-            CFDataGetLength(cfPassword));
-        CFRelease(result);
-    }
+    if (!cfPassword || err.type != keychain::ErrorType::NoError)
+        return "";
 
-    CFRelease(query);
-
-    return password;
+    return std::string(
+        reinterpret_cast<const char *>(CFDataGetBytePtr(cfPassword.getCFRef())),
+        CFDataGetLength(cfPassword.getCFRef()));
 }
 
 void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err) {
     err = Error{};
     const auto serviceName = makeServiceName(package, service);
-    CFMutableDictionaryRef query = createQuery(serviceName, user, err);
+    const auto query = createQuery(serviceName, user, err);
 
-    if (err.type != keychain::ErrorType::NoError) {
+    if (err.type != keychain::ErrorType::NoError)
         return;
-    }
 
-    OSStatus status = SecItemDelete(query);
-
-    if (status != errSecSuccess) {
-        updateError(err, status);
-    }
-
-    CFRelease(query);
+    updateError(err, SecItemDelete(query.getCFRef()));
 }
 
 } // namespace keychain
