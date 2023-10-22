@@ -23,6 +23,7 @@
  *
  */
 
+#include <type_traits>
 #include <vector>
 
 #include <Security/Security.h>
@@ -110,23 +111,39 @@ void setGenericError(keychain::Error &err, const std::string &errorMessage) {
 }
 
 /*! \brief Helper to manage the lifetime of CFObjects */
-template <typename T> struct ScopedCFRef {
+template <typename T,
+          typename = typename std::enable_if<std::is_pointer<T>::value>::type>
+class ScopedCFRef {
   public:
-    explicit ScopedCFRef(T &&ref) : _ref(std::move(ref)) {}
-    ~ScopedCFRef() {
-        if (_ref)
-            CFRelease(_ref);
+    explicit ScopedCFRef(T ref) : _ref(ref) {}
+    ~ScopedCFRef() { _release(); }
+
+    ScopedCFRef(ScopedCFRef &&other) noexcept : _ref(other._ref) {
+        other._ref = nullptr;
+    }
+    ScopedCFRef &operator=(ScopedCFRef &&other) {
+        if (this != &other) {
+            _release();
+            _ref = other._ref;
+            other._ref = nullptr;
+        }
+        return *this;
     }
 
-    ScopedCFRef(ScopedCFRef &&) noexcept = default;
     ScopedCFRef(const ScopedCFRef &) = delete;
     ScopedCFRef &operator=(const ScopedCFRef &) = delete;
-    ScopedCFRef &operator=(ScopedCFRef &&) = delete;
 
-    const T &getCFRef() const { return _ref; }
+    const T get() const { return _ref; }
     operator bool() const { return _ref != nullptr; }
 
   private:
+    void _release() {
+        if (_ref != nullptr) {
+            CFRelease(_ref);
+            _ref = nullptr;
+        }
+    }
+
     T _ref;
 };
 
@@ -172,10 +189,9 @@ ScopedCFRef<CFMutableDictionaryRef> createQuery(const std::string &serviceName,
     if (err.type != keychain::ErrorType::NoError)
         return query;
 
-    CFDictionaryAddValue(query.getCFRef(), kSecClass, kSecClassGenericPassword);
-    CFDictionaryAddValue(query.getCFRef(), kSecAttrAccount, cfUser.getCFRef());
-    CFDictionaryAddValue(
-        query.getCFRef(), kSecAttrService, cfServiceName.getCFRef());
+    CFDictionaryAddValue(query.get(), kSecClass, kSecClassGenericPassword);
+    CFDictionaryAddValue(query.get(), kSecAttrAccount, cfUser.get());
+    CFDictionaryAddValue(query.get(), kSecAttrService, cfServiceName.get());
 
     return query;
 }
@@ -195,9 +211,8 @@ void setPassword(const std::string &package, const std::string &service,
     if (err.type != keychain::ErrorType::NoError)
         return;
 
-    CFDictionaryAddValue(
-        query.getCFRef(), kSecValueData, cfPassword.getCFRef());
-    OSStatus status = SecItemAdd(query.getCFRef(), NULL);
+    CFDictionaryAddValue(query.get(), kSecValueData, cfPassword.get());
+    OSStatus status = SecItemAdd(query.get(), NULL);
 
     if (status == errSecDuplicateItem) {
         // password exists -- override
@@ -205,10 +220,9 @@ void setPassword(const std::string &package, const std::string &service,
         if (err.type != keychain::ErrorType::NoError)
             return;
 
-        CFDictionaryAddValue(attributesToUpdate.getCFRef(),
-                             kSecValueData,
-                             cfPassword.getCFRef());
-        status = SecItemUpdate(query.getCFRef(), attributesToUpdate.getCFRef());
+        CFDictionaryAddValue(
+            attributesToUpdate.get(), kSecValueData, cfPassword.get());
+        status = SecItemUpdate(query.get(), attributesToUpdate.get());
     }
 
     updateError(err, status);
@@ -223,18 +237,18 @@ std::string getPassword(const std::string &package, const std::string &service,
     if (err.type != keychain::ErrorType::NoError)
         return "";
 
-    CFDictionaryAddValue(query.getCFRef(), kSecReturnData, kCFBooleanTrue);
+    CFDictionaryAddValue(query.get(), kSecReturnData, kCFBooleanTrue);
 
     CFTypeRef result = nullptr;
-    updateError(err, SecItemCopyMatching(query.getCFRef(), &result));
+    updateError(err, SecItemCopyMatching(query.get(), &result));
     const auto cfPassword = ScopedCFRef<CFDataRef>((CFDataRef)result);
 
     if (!cfPassword || err.type != keychain::ErrorType::NoError)
         return "";
 
     return std::string(
-        reinterpret_cast<const char *>(CFDataGetBytePtr(cfPassword.getCFRef())),
-        CFDataGetLength(cfPassword.getCFRef()));
+        reinterpret_cast<const char *>(CFDataGetBytePtr(cfPassword.get())),
+        CFDataGetLength(cfPassword.get()));
 }
 
 void deletePassword(const std::string &package, const std::string &service,
@@ -246,7 +260,7 @@ void deletePassword(const std::string &package, const std::string &service,
     if (err.type != keychain::ErrorType::NoError)
         return;
 
-    updateError(err, SecItemDelete(query.getCFRef()));
+    updateError(err, SecItemDelete(query.get()));
 }
 
 } // namespace keychain
