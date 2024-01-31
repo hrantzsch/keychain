@@ -1,46 +1,9 @@
+_build/*
 build/*
+
 compile_commands.json
 tags
 
-# Created by https://www.gitignore.io/api/c++
-# Edit at https://www.gitignore.io/?templates=c++
-
-### C++ ###
-# Prerequisites
-*.d
-
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
-
-# End of https://www.gitignore.io/api/c++
-
-keychain.sublime-workspace
-keychain.sublime-project
 .vscode
+keychain.sublime-project
+keychain.sublime-workspace

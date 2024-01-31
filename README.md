@@ -58,7 +58,7 @@ int main() {
 
 ### Via Conan
 
-Keychain is available in the [ConanCenter](https://conan.io/center/keychain) package repository.
+Keychain is available in the [ConanCenter](https://conan.io/center/recipes/keychain) package repository.
 If you're using Conan, simply add the desired version to your requirements.
 
 ### Building It Manually
