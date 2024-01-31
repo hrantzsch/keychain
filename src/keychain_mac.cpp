@@ -110,7 +110,14 @@ void setGenericError(keychain::Error &err, const std::string &errorMessage) {
     err.code = -1;
 }
 
-/*! \brief Helper to manage the lifetime of CFObjects */
+/*! \brief Helper to manage the lifetime of CF-Objects
+ *
+ * This helper will CFRelease the managed CF-Object when it goes out of scope.
+ * It assumes ownership of the managed object, so users should own the object in
+ * terms of the Core Foundation "Create Rule" when passing it to the
+ * ScopedCFRef. Consequently, the object should also not be released by anyone
+ * else, at least not without calling CFRetain first.
+ * */
 template <typename T,
           typename = typename std::enable_if<std::is_pointer<T>::value>::type>
 class ScopedCFRef {
