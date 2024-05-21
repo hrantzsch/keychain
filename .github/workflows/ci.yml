@@ -2,62 +2,98 @@ name: Build and test
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
+  schedule:
+    - cron: '0 4 * * 0'
 
 jobs:
 
-  Windows-test:
-    runs-on: windows-2022
+  windows-test:
+    runs-on: ${{ matrix.os.image }}
     strategy:
       matrix:
+        os:
+          - {
+            image: windows-2019,
+            generator: "Visual Studio 16 2019"
+          }
+          - {
+            image: windows-2022,
+            generator: "Visual Studio 17 2022"
+          }
         config: [Debug, Release]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Run cmake
-        run: cmake -G "Visual Studio 17" . -DBUILD_TESTS=yes -DCODE_COVERAGE=no
+        run: cmake -G "${{ matrix.os.generator }}" . -DBUILD_TESTS=yes -DCODE_COVERAGE=no
       - name: Build and run tests
         run: cmake --build . --target test --config ${{ matrix.config }}
 
-  Unix-test-and-cover:
-    runs-on: ${{ matrix.os }}
+  unix-test-and-coverage:
+    runs-on: ${{ matrix.os.image }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, macos-13, macos-14]
-        config: [Debug, Release, Coverage]
+        os:
+          - {
+            image: ubuntu-20.04,
+            coverage: no
+          }
+          - {
+            image: ubuntu-22.04,
+            coverage: no
+          }
+          - {
+            image: ubuntu-24.04,
+            coverage: yes
+          }
+          - {
+            image: macos-12,
+            coverage: no
+          }
+          - {
+            image: macos-13,
+            coverage: no
+          }
+          - {
+            image: macos-14,
+            coverage: yes
+          }
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
-          if [ "$RUNNER_OS" == "Linux" ]; then
+          if [ ${{ runner.os }} == 'Linux' ]; then
             sudo apt-get install dbus-x11 dbus gnome-keyring libsecret-1-dev gcovr
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            pip3 install gcovr
+          elif [ ${{ runner.os }} == 'macOS' ]; then
+            brew install gcovr
           fi
 
-      - name: "CMake: configure coverage"
-        if: matrix.config == 'Coverage'
-        run: cmake . -DBUILD_TESTS=yes -DCODE_COVERAGE=yes -DCMAKE_BUILD_TYPE=Debug
-      - name: "CMake: configure test"
-        if: matrix.config != 'Coverage'
-        run: cmake . -DBUILD_TESTS=yes -DCODE_COVERAGE=no -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+      - name: Run cmake
+        run: |
+          cmake . -DBUILD_TESTS=yes \
+            -DCODE_COVERAGE=${{ matrix.os.coverage }} \
+            -DCMAKE_BUILD_TYPE=${{ matrix.os.coverage == 'yes' && 'Debug' || 'Release' }}
 
       - name: Build and run tests
         run: |
-          if [ "$RUNNER_OS" == "Linux" ]; then
+          if [ ${{ runner.os }} == 'Linux' ]; then
             eval $(DISPLAY=:99.0 dbus-launch --sh-syntax)
             echo "somepassword" | gnome-keyring-daemon -r -d --unlock
           fi
           cmake --build . --target test
 
       - name: Generate gcovr report
-        if: matrix.config == 'Coverage'
+        if: matrix.os.coverage == 'yes'
         run: gcovr -r . -f "src/*" -f "include/*" -x -o coverage.xml
+
       - name: Upload coverage to Codecov
-        if: matrix.config == 'Coverage'
-        uses: codecov/codecov-action@v3
+        if: matrix.os.coverage == 'yes'
+        uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
           flags: unittests
