@@ -1,0 +1,4 @@
+codecov:
+  branch: master
+ignore:
+  - "test/catch\\.hpp"
