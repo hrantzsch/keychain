@@ -1,6 +1,6 @@
 # Keychain
 
-![CI Badge](https://github.com/hrantzsch/keychain/workflows/Build%20and%20test/badge.svg)
+[![CI](https://github.com/hrantzsch/keychain/actions/workflows/ci.yml/badge.svg)](https://github.com/hrantzsch/keychain/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/hrantzsch/keychain/branch/master/graph/badge.svg)](https://codecov.io/gh/hrantzsch/keychain)
 [![Conan Center](https://img.shields.io/conan/v/keychain)](https://conan.io/center/recipes/keychain)
 
@@ -19,7 +19,7 @@ On macOS the passwords are managed by the Keychain, on Linux they are managed by
 
 int main() {
     // used to indicate errors
-    keychain::Error error{};
+    keychain::Error error;
 
     // used to identify the password in the OS credentials storage
     const std::string package = "com.example.keychain-app";
