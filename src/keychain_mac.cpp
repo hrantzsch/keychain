@@ -28,6 +28,8 @@
 
 #include <Security/Security.h>
 
+#include <AvailabilityMacros.h>
+
 #include "keychain.h"
 
 namespace {
@@ -92,7 +94,9 @@ void updateError(keychain::Error &err, OSStatus status) {
         break;
 
     // potential errors in case the user needs to unlock the keychain first
+#if MAC_OS_X_VERSION_MIN_REQUIRED > 1080
     case errSecUserCanceled:        // user pressed the Cancel button
+#endif
     case errSecAuthFailed:          // too many failed password attempts
     case errSecInteractionRequired: // user interaction required but not allowed
         err.type = keychain::ErrorType::AccessDenied;
