@@ -51,10 +51,6 @@ jobs:
             coverage: yes
           }
           - {
-            image: macos-12,
-            coverage: no
-          }
-          - {
             image: macos-13,
             coverage: no
           }
