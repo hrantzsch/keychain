@@ -28,6 +28,7 @@
 #include "keychain.h"
 
 #include <memory>
+#include <string>
 
 #define UNICODE
 
@@ -40,19 +41,12 @@ namespace {
 
 static const DWORD kCredType = CRED_TYPE_GENERIC;
 
-struct LpwstrDeleter {
-    void operator()(WCHAR *p) const { delete[] p; }
-};
-
-//! Wrapper around a WCHAR pointer a.k.a. LPWStr to take care of memory handling
-using ScopedLpwstr = std::unique_ptr<WCHAR, LpwstrDeleter>;
-
 /*! \brief Converts a UTF-8 std::string to wide char
  *
  * Uses MultiByteToWideChar to convert the input string and wraps the result in
  * a ScopedLpwstr. Returns nullptr on failure.
  */
-ScopedLpwstr utf8ToWideChar(const std::string &utf8) {
+std::wstring utf8ToWideChar(const std::string &utf8) {
     int requiredBufSize = MultiByteToWideChar(
         CP_UTF8,
         0, // flags must be 0 for UTF-8
@@ -68,15 +62,15 @@ ScopedLpwstr utf8ToWideChar(const std::string &utf8) {
         return nullptr;
     }
 
-    ScopedLpwstr lwstr(new WCHAR[requiredBufSize]);
-    int bytesWritten = MultiByteToWideChar(
-        CP_UTF8, 0, utf8.c_str(), -1, lwstr.get(), requiredBufSize);
+    std::wstring wstr(requiredBufSize - 1, L'\0');
+    auto* wstrPtr = &wstr.front();
+    intbytesWritten = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, wstrPtr, requiredBufSize);
 
     if (bytesWritten == 0) {
         return nullptr;
     }
 
-    return lwstr;
+    return wstr;
 }
 
 /*! \brief Converts a wide char pointer to a std::string
@@ -105,12 +99,13 @@ std::string wideCharToAnsi(LPWSTR wChar) {
         return result;
     }
 
-    std::unique_ptr<char[]> buffer(new char[requiredBufSize]);
-    int bytesWritten = WideCharToMultiByte(
-        CP_ACP, 0, wChar, -1, buffer.get(), requiredBufSize, nullptr, nullptr);
+    std::string buffer(requiredBufSize - 1, L'\0');
+    auto *bufferPtr = &buffer.front();
+
+    int bytesWritten = WideCharToMultiByte(CP_ACP, 0, wChar, -1, bufferPtr, requiredBufSize, nullptr, nullptr);
 
     if (bytesWritten != 0) {
-        result = std::string(buffer.get());
+        result = buffer;
     }
 
     return result;
@@ -155,11 +150,11 @@ void updateError(keychain::Error &err) {
  *
  * The result is wrapped in a ScopedLpwstr.
  */
-ScopedLpwstr makeTargetName(const std::string &package,
+std::wstring makeTargetName(const std::string &package,
                             const std::string &service, const std::string &user,
                             keychain::Error &err) {
     auto result = utf8ToWideChar(package + "." + service + '/' + user);
-    if (!result) {
+    if (result.empty()) {
         updateError(err);
 
         // make really sure that we set an error code if we will return nullptr
@@ -186,8 +181,8 @@ void setPassword(const std::string &package, const std::string &service,
         return;
     }
 
-    ScopedLpwstr user_name(utf8ToWideChar(user));
-    if (!user_name) {
+    auto user_name(utf8ToWideChar(user));
+    if (user_name.empty()) {
         updateError(err);
         return;
     }
@@ -202,8 +197,8 @@ void setPassword(const std::string &package, const std::string &service,
 
     CREDENTIAL cred = {};
     cred.Type = kCredType;
-    cred.TargetName = target_name.get();
-    cred.UserName = user_name.get();
+    cred.TargetName = &target_name.front();
+    cred.UserName = &user_name.front();
     cred.CredentialBlobSize = static_cast<DWORD>(password.size());
     cred.CredentialBlob = (LPBYTE)(password.data());
     cred.Persist = CRED_PERSIST_ENTERPRISE;
@@ -224,7 +219,7 @@ std::string getPassword(const std::string &package, const std::string &service,
     }
 
     CREDENTIAL *cred;
-    bool result = ::CredRead(target_name.get(), kCredType, 0, &cred);
+    bool result = ::CredRead(target_name.data(), kCredType, 0, &cred);
 
     if (result == TRUE) {
         password = std::string(reinterpret_cast<char *>(cred->CredentialBlob),
@@ -245,7 +240,7 @@ void deletePassword(const std::string &package, const std::string &service,
         return;
     }
 
-    if (::CredDelete(target_name.get(), kCredType, 0) == FALSE) {
+    if (::CredDelete(target_name.data(), kCredType, 0) == FALSE) {
         updateError(err);
     }
 }
