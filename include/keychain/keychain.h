@@ -100,7 +100,7 @@ enum class ErrorType {
  * or failure.
  */
 struct Error {
-    Error() : type(ErrorType::NoError) {}
+    Error() : type(ErrorType::NoError), code(0) {}
 
     /*! \brief The type or reason of the error
      *
