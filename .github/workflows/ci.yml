@@ -39,10 +39,6 @@ jobs:
       matrix:
         os:
           - {
-            image: ubuntu-20.04,
-            coverage: no
-          }
-          - {
             image: ubuntu-22.04,
             coverage: no
           }
