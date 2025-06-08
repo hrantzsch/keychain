@@ -158,4 +158,33 @@ void deletePassword(const std::string &package, const std::string &service,
     }
 }
 
+bool isAvailable(Error &err) {
+    err = Error{};
+
+#ifdef SIMULATE_FAILURES
+    // TEST HOOK: Simulate failure to create SecretService
+    if (getenv("KEYCHAIN_TEST_SIMULATED_FAILURE")) {
+        err.type = ErrorType::Unavailable;
+        err.message = "Simulated failure: SecretService unavailable";
+        err.code = -1;
+        return false;
+    }
+#endif
+
+    GError *error = NULL;
+    SecretService *svc =
+        secret_service_get_sync((SecretServiceFlags)0, NULL, &error);
+
+    if (error != NULL || svc == NULL) {
+        err.type = ErrorType::Unavailable;
+        err.message = error ? error->message : "SecretService unavailable";
+        err.code = error ? error->code : -1;
+        if (error)
+            g_error_free(error);
+        return false;
+    }
+    g_object_unref(svc);
+    return true;
+}
+
 } // namespace keychain

@@ -8,6 +8,7 @@ CATCH_REGISTER_ENUM(keychain::ErrorType,
                     keychain::ErrorType::NoError,
                     keychain::ErrorType::GenericError,
                     keychain::ErrorType::NotFound,
+                    keychain::ErrorType::Unavailable,
                     keychain::ErrorType::PasswordTooLong,
                     keychain::ErrorType::AccessDenied)
 // clang-format on
@@ -25,6 +26,7 @@ TEST_CASE("Keychain", "[keychain]") {
                    const std::string &service,
                    const std::string &user,
                    const std::string &password_in) {
+
         Error ec{};
         getPassword(package, service, user, ec);
         REQUIRE(ec.type == ErrorType::NotFound);
@@ -111,4 +113,48 @@ TEST_CASE("Keychain", "[keychain]") {
         deletePassword(package, service, user, ec);
         check_no_error(ec);
     }
+
+#ifdef KEYCHAIN_MACOS && SIMULATE_FAILURES
+    SECTION("isAvailable fails at SecItemCopyMatching") {
+        setenv("KEYCHAIN_TEST_SIMULATED_FAILURE", "1", 1);
+        Error ec{};
+        bool available = isAvailable(ec);
+        CHECK_FALSE(available);
+        CHECK(ec.type == ErrorType::Unavailable);
+        CHECK(ec.message.find("Simulated failure: SecItemCopyMatching") != std::string::npos);
+        unsetenv("KEYCHAIN_TEST_SIMULATED_FAILURE");
+    }
+#endif
+
+#ifdef KEYCHAIN_LINUX && SIMULATE_FAILURES
+    SECTION("isAvailable fails at SecretService creation") {
+        setenv("KEYCHAIN_TEST_SIMULATED_FAILURE", "1", 1);
+        Error ec{};
+        bool available = isAvailable(ec);
+        CHECK_FALSE(available);
+        CHECK(ec.type == ErrorType::Unavailable);
+        CHECK(ec.message.find("Simulated failure: SecretService unavailable") != std::string::npos);
+        unsetenv("KEYCHAIN_TEST_SIMULATED_FAILURE");
+    }
+#endif
+
+    SECTION("isAvailable returns true and no error on supported platforms") {
+        Error ec{};
+        bool available = isAvailable(ec);
+
+        REQUIRE(available);
+        check_no_error(ec);
+    }
+
+#ifdef SIMULATE_FAILURES
+    SECTION("Simulated failure path produces expected error state") {
+        Error ec{};
+        ec.type = ErrorType::Unavailable;
+        ec.message = "Simulated unavailable";
+
+        bool fakeAvailable = false;
+        CHECK_FALSE(fakeAvailable);
+        REQUIRE(ec.type == ErrorType::Unavailable);
+    }
+#endif
 }

@@ -84,11 +84,24 @@ void setPassword(const std::string &package, const std::string &service,
 void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err);
 
+/*! \brief Check if the keychain is available
+ *
+ * This function checks whether a secure keychain or credential store is
+ * available on the current platform. On platforms where the keychain is not
+ * actually used (e.g., Windows), this function is effectively a no-op but
+ * still returns true to indicate that keychain operations are permitted.
+ *
+ * \param err Output parameter communicating success or error details
+ * \return true if keychain operations are supported on this platform, false otherwise
+ */
+bool isAvailable(Error &err);
+
 enum class ErrorType {
     // update CATCH_REGISTER_ENUM in tests.cpp when changing this
     NoError = 0,
     GenericError,
     NotFound,
+    Unavailable,
     // OS-specific errors
     PasswordTooLong = 10, // Windows only
     AccessDenied,         // macOS only
