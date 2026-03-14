@@ -91,7 +91,10 @@ if (BUILD_TESTS)
     add_subdirectory("test")
     if (SIMULATE_FAILURES)
         target_compile_definitions(${PROJECT_NAME}
-                PUBLIC
+                PRIVATE
+                -DSIMULATE_FAILURES=1)
+        target_compile_definitions(${PROJECT_NAME}-test
+                PRIVATE
                 -DSIMULATE_FAILURES=1)
     endif ()
 endif ()

@@ -44,7 +44,7 @@ jobs:
 
       - name: Run cmake (Unix)
         if: runner.os != 'Windows'
-        run: cmake . -DBUILD_TESTS=yes -DCMAKE_BUILD_TYPE=Release
+        run: cmake . -DBUILD_TESTS=yes -DSIMULATE_FAILURES=yes -DCMAKE_BUILD_TYPE=Release
 
       - name: Run cmake (Windows)
         if: runner.os == 'Windows'
@@ -87,7 +87,7 @@ jobs:
         run: brew install gcovr
 
       - name: Run cmake
-        run: cmake . -DBUILD_TESTS=yes -DCODE_COVERAGE=yes -DCMAKE_BUILD_TYPE=Debug
+        run: cmake . -DBUILD_TESTS=yes -DCODE_COVERAGE=yes -DSIMULATE_FAILURES=yes -DCMAKE_BUILD_TYPE=Debug
 
       - name: Build and run tests (Linux)
         if: runner.os == 'Linux'
