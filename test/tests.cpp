@@ -8,6 +8,7 @@ CATCH_REGISTER_ENUM(keychain::ErrorType,
                     keychain::ErrorType::NoError,
                     keychain::ErrorType::GenericError,
                     keychain::ErrorType::NotFound,
+                    keychain::ErrorType::Unavailable,
                     keychain::ErrorType::PasswordTooLong,
                     keychain::ErrorType::AccessDenied)
 // clang-format on
@@ -109,6 +110,40 @@ TEST_CASE("Keychain", "[keychain]") {
 
         ec.type = ErrorType::GenericError;
         deletePassword(package, service, user, ec);
+        check_no_error(ec);
+    }
+
+#if defined(KEYCHAIN_MACOS) && defined(SIMULATE_FAILURES)
+    SECTION("isAvailable fails at SecItemCopyMatching") {
+        setenv("KEYCHAIN_TEST_SIMULATED_FAILURE", "1", 1);
+        Error ec{};
+        bool available = isAvailable(ec);
+        CHECK_FALSE(available);
+        CHECK(ec.type == ErrorType::Unavailable);
+        CHECK(ec.message.find("Simulated failure: SecItemCopyMatching") !=
+              std::string::npos);
+        unsetenv("KEYCHAIN_TEST_SIMULATED_FAILURE");
+    }
+#endif
+
+#if defined(KEYCHAIN_LINUX) && defined(SIMULATE_FAILURES)
+    SECTION("isAvailable fails at SecretService creation") {
+        setenv("KEYCHAIN_TEST_SIMULATED_FAILURE", "1", 1);
+        Error ec{};
+        bool available = isAvailable(ec);
+        CHECK_FALSE(available);
+        CHECK(ec.type == ErrorType::Unavailable);
+        CHECK(ec.message.find("Simulated failure: SecretService unavailable") !=
+              std::string::npos);
+        unsetenv("KEYCHAIN_TEST_SIMULATED_FAILURE");
+    }
+#endif
+
+    SECTION("isAvailable returns true and no error on supported platforms") {
+        Error ec{};
+        bool available = isAvailable(ec);
+
+        REQUIRE(available);
         check_no_error(ec);
     }
 }

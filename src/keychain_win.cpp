@@ -250,4 +250,11 @@ void deletePassword(const std::string &package, const std::string &service,
     }
 }
 
+bool isAvailable(Error &err) {
+    // Credential Manager is always present on Windows;
+    // any runtime errors will surface in get/set/delete.
+    err = Error{};
+    return true;
+}
+
 } // namespace keychain

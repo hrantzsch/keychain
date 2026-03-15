@@ -84,11 +84,25 @@ void setPassword(const std::string &package, const std::string &service,
 void deletePassword(const std::string &package, const std::string &service,
                     const std::string &user, Error &err);
 
+/*! \brief Check if the keychain is available
+ *
+ * This function checks whether the platform's credential store is available
+ * and functional. On Linux and macOS, this probes the underlying service
+ * (SecretService or Keychain Services). On Windows, Credential Manager is
+ * a built-in OS component that is always available, so this is a no-op
+ * that always returns true.
+ *
+ * \param err Output parameter communicating success or error details
+ * \return true if the credential store is available, false otherwise
+ */
+bool isAvailable(Error &err);
+
 enum class ErrorType {
     // update CATCH_REGISTER_ENUM in tests.cpp when changing this
     NoError = 0,
     GenericError,
     NotFound,
+    Unavailable,
     // OS-specific errors
     PasswordTooLong = 10, // Windows only
     AccessDenied,         // macOS only

@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.12.4)
 project(keychain)
 
 option(BUILD_TESTS "Build tests for ${PROJECT_NAME}" OFF)
+option(SIMULATE_FAILURES "Enable simulated failures in tests for ${PROJECT_NAME}" OFF)
 
 add_library(${PROJECT_NAME})
 target_include_directories(${PROJECT_NAME}
@@ -88,4 +89,12 @@ install(TARGETS ${PROJECT_NAME}
 
 if (BUILD_TESTS)
     add_subdirectory("test")
+    if (SIMULATE_FAILURES)
+        target_compile_definitions(${PROJECT_NAME}
+                PRIVATE
+                -DSIMULATE_FAILURES=1)
+        target_compile_definitions(${PROJECT_NAME}-test
+                PRIVATE
+                -DSIMULATE_FAILURES=1)
+    endif ()
 endif ()

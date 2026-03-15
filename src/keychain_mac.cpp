@@ -270,4 +270,49 @@ void deletePassword(const std::string &package, const std::string &service,
     updateError(err, SecItemDelete(query.get()));
 }
 
+bool isAvailable(Error &err) {
+    err = Error{};
+
+    auto query = createCFMutableDictionary(err);
+    if (!query) {
+        err.type = ErrorType::Unavailable;
+        err.message = "Failed to create query dictionary";
+        return false;
+    }
+
+    CFDictionaryAddValue(query.get(), kSecClass, kSecClassGenericPassword);
+
+    auto service =
+        createCFStringWithCString("keychain_availability_check_service", err);
+    auto account =
+        createCFStringWithCString("keychain_availability_check_account", err);
+    if (!service || !account) {
+        err.type = ErrorType::Unavailable;
+        err.message = "Failed to create service/account string";
+        return false;
+    }
+
+    CFDictionaryAddValue(query.get(), kSecAttrService, service.get());
+    CFDictionaryAddValue(query.get(), kSecAttrAccount, account.get());
+    CFDictionaryAddValue(query.get(), kSecReturnData, kCFBooleanFalse);
+
+#ifdef SIMULATE_FAILURES
+    // TEST HOOK: Simulate SecItemCopyMatching failure
+    if (getenv("KEYCHAIN_TEST_SIMULATED_FAILURE")) {
+        err.type = ErrorType::Unavailable;
+        err.message = "Simulated failure: SecItemCopyMatching";
+        return false;
+    }
+#endif
+
+    OSStatus status = SecItemCopyMatching(query.get(), nullptr);
+
+    if (status == errSecSuccess || status == errSecItemNotFound) {
+        return true;
+    } else {
+        err.type = ErrorType::Unavailable;
+        err.message = errorStatusToString(status);
+        return false;
+    }
+}
 } // namespace keychain
