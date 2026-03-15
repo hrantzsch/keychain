@@ -67,6 +67,8 @@ jobs:
 
   coverage:
     needs: format
+    permissions:
+      checks: write
     runs-on: ${{ matrix.os.image }}
     strategy:
       matrix:
@@ -80,11 +82,10 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install dbus-x11 dbus gnome-keyring libsecret-1-dev gcovr
+          sudo apt-get install dbus-x11 dbus gnome-keyring libsecret-1-dev
 
-      - name: Install dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: brew install gcovr
+      - name: Install gcovr
+        run: pip install gcovr==8.6
 
       - name: Run cmake
         run: cmake . -DBUILD_TESTS=yes -DCODE_COVERAGE=yes -DSIMULATE_FAILURES=yes -DCMAKE_BUILD_TYPE=Debug
@@ -101,13 +102,38 @@ jobs:
         run: cmake --build . --target test
 
       - name: Generate coverage report
-        run: gcovr -r . -f "src/" -f "include/" -x -o coverage.xml
+        run: |
+          gcovr -r . -f "src/" --markdown -o coverage.md
+          gcovr -r . -f "src/" --json-summary-pretty -o coverage-summary.json
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+      - name: Coverage summary
+        env:
+          IMAGE: ${{ matrix.os.image }}
+        run: |
+          echo "## Coverage ($IMAGE)" >> $GITHUB_STEP_SUMMARY
+          cat coverage.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Coverage check
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        env:
+          IMAGE: ${{ matrix.os.image }}
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: true
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('coverage.md', 'utf8');
+            const stats = JSON.parse(fs.readFileSync('coverage-summary.json', 'utf8'));
+            const linePct = stats.line_percent.toFixed(1);
+            const image = process.env.IMAGE;
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head_sha: context.sha,
+              name: `Coverage (${image})`,
+              status: 'completed',
+              conclusion: 'success',
+              output: {
+                title: `${linePct}% line coverage`,
+                summary: summary,
+              },
+            });
