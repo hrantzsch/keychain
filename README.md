@@ -1,7 +1,6 @@
 # Keychain
 
 [![CI](https://github.com/hrantzsch/keychain/actions/workflows/ci.yml/badge.svg)](https://github.com/hrantzsch/keychain/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/hrantzsch/keychain/branch/master/graph/badge.svg)](https://codecov.io/gh/hrantzsch/keychain)
 [![Conan Center](https://img.shields.io/conan/v/keychain)](https://conan.io/center/recipes/keychain)
 
 Keychain is a thin cross-platform wrapper to access the operating system's credential storage in C++.
