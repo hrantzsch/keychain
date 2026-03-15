@@ -18,7 +18,7 @@ set_target_properties(${PROJECT_NAME}
 
 target_compile_features(${PROJECT_NAME}
     PUBLIC
-        cxx_std_11)
+        cxx_std_14)
 
 target_compile_options(${PROJECT_NAME}
     PRIVATE
