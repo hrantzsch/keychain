@@ -75,11 +75,8 @@ endif ()
 # Code Coverage Configuration
 option(CODE_COVERAGE "Enable coverage reporting" OFF)
 if (CODE_COVERAGE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    set(COVERAGE_COMPILE_FLAGS "--coverage -g -O0")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_COMPILE_FLAGS}")
-    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} --coverage")
-    endif ()
+    target_compile_options(${PROJECT_NAME} PRIVATE --coverage -g -O0)
+    target_link_options(${PROJECT_NAME} PUBLIC --coverage)
 endif ()
 
 install(TARGETS ${PROJECT_NAME}
