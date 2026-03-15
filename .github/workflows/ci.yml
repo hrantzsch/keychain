@@ -101,7 +101,7 @@ jobs:
         run: cmake --build . --target test
 
       - name: Generate coverage report
-        run: gcovr -r . -f "src/*" -f "include/*" -x -o coverage.xml
+        run: gcovr -r . -f "src/" -f "include/" -x -o coverage.xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
