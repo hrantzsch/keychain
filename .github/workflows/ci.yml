@@ -27,6 +27,7 @@ jobs:
         include:
           - { os: { image: ubuntu-22.04 } }
           - { os: { image: ubuntu-24.04 } }
+          - { os: { image: ubuntu-24.04 }, simulate_failures: 'no' }
           - { os: { image: macos-14 } }
           - { os: { image: macos-15 } }
           - { os: { image: windows-2022, generator: "Visual Studio 17 2022" }, config: Debug }
@@ -44,7 +45,7 @@ jobs:
 
       - name: Run cmake (Unix)
         if: runner.os != 'Windows'
-        run: cmake . -DBUILD_TESTS=yes -DSIMULATE_FAILURES=yes -DCMAKE_BUILD_TYPE=Release
+        run: cmake . -DBUILD_TESTS=yes -DSIMULATE_FAILURES=${{ matrix.simulate_failures || 'yes' }} -DCMAKE_BUILD_TYPE=Release
 
       - name: Run cmake (Windows)
         if: runner.os == 'Windows'
