@@ -31,8 +31,8 @@ jobs:
           - { os: { image: macos-15 } }
           - { os: { image: windows-2022, generator: "Visual Studio 17 2022" }, config: Debug }
           - { os: { image: windows-2022, generator: "Visual Studio 17 2022" }, config: Release }
-          - { os: { image: windows-2025, generator: "Visual Studio 17 2022" }, config: Debug }
-          - { os: { image: windows-2025, generator: "Visual Studio 17 2022" }, config: Release }
+          - { os: { image: windows-2025, generator: "Visual Studio 18 2026" }, config: Debug }
+          - { os: { image: windows-2025, generator: "Visual Studio 18 2026" }, config: Release }
     steps:
       - uses: actions/checkout@v6
 

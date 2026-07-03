@@ -47,7 +47,7 @@ std::string CFStringToStdString(const CFStringRef cfstring) {
     auto maxUtf8Bytes =
         CFStringGetMaximumSizeForEncoding(utf16Pairs, kCFStringEncodingUTF8);
 
-    std::vector<char> cstr(maxUtf8Bytes, '\0');
+    std::vector<char> cstr(maxUtf8Bytes + 1, '\0');
     auto result = CFStringGetCString(
         cfstring, cstr.data(), cstr.size(), kCFStringEncodingUTF8);
 
@@ -223,6 +223,8 @@ void setPassword(const std::string &package, const std::string &service,
 
     if (status == errSecDuplicateItem) {
         // password exists -- override
+        CFDictionaryRemoveValue(query.get(), kSecValueData);
+
         auto attributesToUpdate = createCFMutableDictionary(err);
         if (err.type != keychain::ErrorType::NoError)
             return;
