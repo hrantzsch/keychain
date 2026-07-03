@@ -65,7 +65,7 @@ TEST_CASE("Keychain", "[keychain]") {
 
     SECTION("the happily place") { crud(package, service, user, password); }
 
-    SECTION("empty package name") { crud(package, "", user, password); }
+    SECTION("empty package name") { crud("", service, user, password); }
     SECTION("empty service name") { crud(package, "", user, password); }
     SECTION("empty user name") { crud(package, service, "", password); }
     SECTION("empty password") { crud(package, service, user, ""); }
